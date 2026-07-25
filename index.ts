@@ -1,1 +1,1 @@
-import "./src/mcp/server.ts"
+import "@/mcp/server.ts"

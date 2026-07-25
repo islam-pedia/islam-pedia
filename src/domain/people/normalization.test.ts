@@ -3,7 +3,7 @@ import {
   cleanDisplayText,
   normalizeSearchText,
   prepareSearchTerms,
-} from "./normalization.ts"
+} from "./normalization"
 
 describe("person search normalization", () => {
   test("preserves display text while collapsing whitespace", () => {

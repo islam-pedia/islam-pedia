@@ -108,6 +108,13 @@ entities and their relationships can be explored easily.
 ## Technology and Development Conventions
 
 - Use Bun and TypeScript for backend and MCP development.
+- Keep each application domain under `src/application/<domain>/` with a
+  consistent `commands/`, `queries/`, and `shared/` structure. Commands perform
+  writes, queries perform reads, and shared contains domain-local types, errors,
+  and helpers.
+- Treat `src/application/<domain>/index.ts` as the domain's public API. Code
+  outside that domain must import through the public index (preferably through
+  the `@/*` alias) instead of deep-importing its internal files.
 - Use the release-candidate versions of Drizzle ORM and Drizzle Kit, pinned to
   exact matching versions until the owner explicitly decides to upgrade.
 - Use Drizzle's native Bun SQL integration (`drizzle-orm/bun-sql`) for

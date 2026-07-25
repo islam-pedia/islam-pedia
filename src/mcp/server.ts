@@ -1,7 +1,7 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
-import { registerPeopleTools } from "./tools/people.ts"
-import { registerSystemTools } from "./tools/system.ts"
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp"
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio"
+import { registerPeopleTools } from "@/mcp/tools/people"
+import { registerSystemTools } from "@/mcp/tools/system"
 
 const server = new McpServer({
   name: "islam-pedia",

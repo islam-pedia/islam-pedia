@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test"
-import { assertSafeTestDatabaseName } from "./reset-test-database.ts"
+import { assertSafeTestDatabaseName } from "./reset-test-database"
 
 test("allows only database names ending in _test", () => {
   expect(() => assertSafeTestDatabaseName("islam_pedia_test")).not.toThrow()

@@ -1,4 +1,4 @@
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp"
 import { z } from "zod"
 import {
   addPersonKeywords,
@@ -7,7 +7,7 @@ import {
   importPeople,
   PeopleInputError,
   searchPeople,
-} from "../../application/people.ts"
+} from "@/application/people"
 
 const sourceInputSchema = z.object({
   label: z.string().trim().min(1).max(500).optional(),

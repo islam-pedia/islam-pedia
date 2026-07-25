@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, expect, test } from "bun:test"
-import { Client } from "@modelcontextprotocol/sdk/client/index.js"
+import { Client } from "@modelcontextprotocol/sdk/client"
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 
 let client: Client

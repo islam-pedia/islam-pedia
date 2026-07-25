@@ -1,7 +1,7 @@
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp"
 import { sql } from "drizzle-orm"
 import { z } from "zod"
-import { getDatabase } from "../../db/client.ts"
+import { getDatabase } from "@/db/client"
 
 const healthOutputSchema = z.object({
   status: z.enum(["ok", "degraded"]),

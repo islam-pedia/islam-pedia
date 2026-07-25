@@ -1,10 +1,10 @@
 import { expect, test } from "bun:test"
-import { Client } from "@modelcontextprotocol/sdk/client/index.js"
+import { Client } from "@modelcontextprotocol/sdk/client"
 import {
   getDefaultEnvironment,
   StdioClientTransport,
 } from "@modelcontextprotocol/sdk/client/stdio.js"
-import { resetTestDatabase } from "../testing/reset-test-database.ts"
+import { resetTestDatabase } from "@/testing/reset-test-database"
 
 const integrationTest = Bun.env.TEST_DATABASE_URL ? test : test.skip
 
