@@ -1,5 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
+import { registerPeopleTools } from "./tools/people.ts"
 import { registerSystemTools } from "./tools/system.ts"
 
 const server = new McpServer({
@@ -8,6 +9,7 @@ const server = new McpServer({
 })
 
 registerSystemTools(server)
+registerPeopleTools(server)
 
 async function main(): Promise<void> {
   const transport = new StdioServerTransport()

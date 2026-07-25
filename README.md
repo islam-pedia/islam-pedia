@@ -18,6 +18,12 @@ Start PostgreSQL:
 docker compose up -d
 ```
 
+Apply database migrations:
+
+```bash
+bun run db:migrate
+```
+
 Run the MCP server over stdio:
 
 ```bash
@@ -32,9 +38,32 @@ The initial MCP tools are:
 
 - `system_health` — checks the PostgreSQL connection.
 - `project_context` — reports the current backend architecture.
+- `import_people` — imports up to 500 people in one idempotent batch.
+- `search_people` — searches original names, Latin names, and keywords.
+- `get_person` — reads one person by entity ID.
+- `add_person_keywords` — adds search-only spelling variants.
 
 The MCP process must reserve stdout for protocol messages. Diagnostics are
 written to stderr.
+
+Run type checks and tests:
+
+```bash
+bun run typecheck
+bun test
+```
+
+The local integration database uses `.env.test.local` and is separate from the
+main database. Integration tests clean application data both before and after
+each run, and refuse cleanup unless the connected database name ends in `_test`.
+Run its migration once after creating or changing the test database:
+
+```bash
+bun run db:migrate:test
+```
+
+`bun test` automatically loads `.env.test.local` and includes the integration
+test.
 
 Stop PostgreSQL without deleting its data:
 

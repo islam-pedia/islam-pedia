@@ -28,7 +28,11 @@ test("exposes the initial MCP tools", async () => {
   const { tools } = await client.listTools()
 
   expect(tools.map(({ name }) => name).sort()).toEqual([
+    "add_person_keywords",
+    "get_person",
+    "import_people",
     "project_context",
+    "search_people",
     "system_health",
   ])
 })

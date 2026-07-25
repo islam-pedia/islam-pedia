@@ -56,6 +56,19 @@ entities and their relationships can be explored easily.
 
 - Keep canonical entities separate from names, aliases, titles, relationships,
   events, and source evidence.
+- The current people-only schema consists of `ingestion_runs`, `entities`,
+  `people`, and `entity_search_terms`. New domains should extend the shared
+  entity identity instead of replacing it.
+- `people.name_original` preserves the original-script display name and
+  `people.name_latin` preserves the selected canonical Latin rendering.
+- Normalized columns are derived search data. Never overwrite display names
+  with their normalized forms.
+- `entity_search_terms` contains search-only keywords and spelling variants.
+  Keywords are rebuildable search aids, not historical facts, tags, titles, or
+  relationship data.
+- Never auto-merge people based only on matching or similar names. Report
+  duplicate candidates and preserve distinct provisional entities until stronger
+  identity evidence exists.
 - Treat historical relationships as assertions, not as unquestionable columns
   on an entity. For example, do not model lineage only with `person.parent_id`.
 - Every meaningful assertion should be traceable to one or more source passages.
@@ -76,10 +89,10 @@ entities and their relationships can be explored easily.
 
 - The owner explicitly authorizes AI-driven reads and writes when issuing a
   relevant instruction. Per-row manual approval is not required.
-- MCP write tools should be narrow, intention-revealing operations such as
-  `upsert_person`, `add_name`, `add_relationship`, `attach_evidence`, and
-  `record_event_participation`; avoid exposing unrestricted production SQL as
-  the normal interface.
+- MCP write tools should be narrow, intention-revealing operations such as the
+  current `import_people` and `add_person_keywords`, and future
+  `add_relationship` and `attach_evidence` operations. Avoid exposing
+  unrestricted production SQL as the normal interface.
 - Direct canonical writes are allowed after automatic validation.
 - Before creating an entity, search for likely duplicates across canonical
   names, Arabic names, transliterations, aliases, dates, and known relations.
