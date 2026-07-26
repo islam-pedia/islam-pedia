@@ -4,6 +4,7 @@ import {
   normalizeSearchText,
   prepareSearchTerms,
 } from "@/domain/people/normalization"
+import { personGenders } from "@/domain/people/relationships"
 
 import { IdempotencyConflictError, PeopleInputError } from "./errors"
 import type {
@@ -36,6 +37,12 @@ export function requireCleanText(
 }
 
 export function preparePerson(input: PersonInput): PreparedPerson {
+  const gender = input.gender ?? "unknown"
+
+  if (!personGenders.includes(gender)) {
+    throw new PeopleInputError(`Unsupported person gender "${gender}".`)
+  }
+
   const primaryName = preparePersonName(
     {
       type: input.nameType ?? "personal",
@@ -60,6 +67,7 @@ export function preparePerson(input: PersonInput): PreparedPerson {
     nameOriginalNormalized: primaryName.nameOriginalNormalized,
     nameLatin: primaryName.nameLatin,
     nameLatinNormalized: primaryName.nameLatinNormalized,
+    gender,
     names,
     keywords: prepareSearchTerms(input.keywords ?? [], excludedSearchTerms),
   }
@@ -150,6 +158,7 @@ export function toPersonView(
     mergedIntoEntityId: row.mergedIntoEntityId,
     nameOriginal: row.nameOriginal,
     nameLatin: row.nameLatin,
+    gender: row.gender,
     names: row.names,
     keywords: row.keywords,
     createdAt: row.createdAt.toISOString(),

@@ -19,6 +19,10 @@ import {
   sourceMethodologies,
 } from "@/domain/evidence/source-policy"
 import { personNameTypes } from "@/domain/people/names"
+import {
+  personGenders,
+  personRelationshipTypes,
+} from "@/domain/people/relationships"
 
 const uuidV7 = sql`uuidv7()`
 const emptyJson = sql`'{}'::jsonb`
@@ -32,6 +36,13 @@ export const entityStatus = pgEnum("entity_status", [
 ])
 
 export const personNameType = pgEnum("person_name_type", personNameTypes)
+
+export const personGender = pgEnum("person_gender", personGenders)
+
+export const personRelationshipType = pgEnum(
+  "person_relationship_type",
+  personRelationshipTypes,
+)
 
 export const evidenceInterpretation = pgEnum("evidence_interpretation", [
   "explicit",
@@ -134,6 +145,7 @@ export const people = pgTable(
     nameOriginalNormalized: text("name_original_normalized").notNull(),
     nameLatin: text("name_latin").notNull(),
     nameLatinNormalized: text("name_latin_normalized").notNull(),
+    gender: personGender("gender").default("unknown").notNull(),
     normalizationVersion: smallint("normalization_version")
       .default(1)
       .notNull(),
@@ -167,6 +179,167 @@ export const people = pgTable(
     check(
       "people_normalization_version_positive",
       sql`${table.normalizationVersion} > 0`,
+    ),
+  ],
+)
+
+export const personGenderChanges = pgTable(
+  "person_gender_changes",
+  {
+    id: uuid("id").default(uuidV7).primaryKey(),
+    entityId: uuid("entity_id")
+      .notNull()
+      .references(() => people.entityId, { onDelete: "restrict" }),
+    fromGender: personGender("from_gender"),
+    toGender: personGender("to_gender").notNull(),
+    reason: text("reason").notNull(),
+    createdByRunId: uuid("created_by_run_id")
+      .notNull()
+      .references(() => ingestionRuns.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", {
+      withTimezone: true,
+      mode: "date",
+    })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("person_gender_changes_entity_idx").on(table.entityId),
+    index("person_gender_changes_created_by_run_idx").on(table.createdByRunId),
+    check(
+      "person_gender_changes_transition_check",
+      sql`${table.fromGender} IS NULL OR ${table.fromGender} <> ${table.toGender}`,
+    ),
+    check(
+      "person_gender_changes_reason_not_blank",
+      sql`btrim(${table.reason}) <> ''`,
+    ),
+  ],
+)
+
+export const personRelationships = pgTable(
+  "person_relationships",
+  {
+    id: uuid("id").default(uuidV7).primaryKey(),
+    fromPersonId: uuid("from_person_id")
+      .notNull()
+      .references(() => people.entityId, { onDelete: "restrict" }),
+    toPersonId: uuid("to_person_id")
+      .notNull()
+      .references(() => people.entityId, { onDelete: "restrict" }),
+    type: personRelationshipType("type").notNull(),
+    status: assertionStatus("status").default("accepted").notNull(),
+    createdByRunId: uuid("created_by_run_id")
+      .notNull()
+      .references(() => ingestionRuns.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", {
+      withTimezone: true,
+      mode: "date",
+    })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", {
+      withTimezone: true,
+      mode: "date",
+    })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("person_relationships_unique_fact_uidx").on(
+      table.fromPersonId,
+      table.toPersonId,
+      table.type,
+    ),
+    index("person_relationships_from_idx").on(table.fromPersonId, table.type),
+    index("person_relationships_to_idx").on(table.toPersonId, table.type),
+    index("person_relationships_status_idx").on(table.status),
+    index("person_relationships_created_by_run_idx").on(table.createdByRunId),
+    check(
+      "person_relationships_not_self",
+      sql`${table.fromPersonId} <> ${table.toPersonId}`,
+    ),
+  ],
+)
+
+export const personRelationshipEvidence = pgTable(
+  "person_relationship_evidence",
+  {
+    id: uuid("id").default(uuidV7).primaryKey(),
+    relationshipId: uuid("relationship_id")
+      .notNull()
+      .references(() => personRelationships.id, { onDelete: "restrict" }),
+    passageId: uuid("passage_id")
+      .notNull()
+      .references(() => sourcePassages.id, { onDelete: "restrict" }),
+    assertion: text("assertion").notNull(),
+    interpretation: evidenceInterpretation("interpretation").notNull(),
+    status: assertionStatus("status").notNull(),
+    notes: text("notes"),
+    createdByRunId: uuid("created_by_run_id")
+      .notNull()
+      .references(() => ingestionRuns.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", {
+      withTimezone: true,
+      mode: "date",
+    })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("person_relationship_evidence_relationship_idx").on(
+      table.relationshipId,
+    ),
+    index("person_relationship_evidence_passage_idx").on(table.passageId),
+    index("person_relationship_evidence_status_idx").on(table.status),
+    index("person_relationship_evidence_created_by_run_idx").on(
+      table.createdByRunId,
+    ),
+    check(
+      "person_relationship_evidence_assertion_not_blank",
+      sql`btrim(${table.assertion}) <> ''`,
+    ),
+    check(
+      "person_relationship_evidence_notes_not_blank",
+      sql`${table.notes} IS NULL OR btrim(${table.notes}) <> ''`,
+    ),
+  ],
+)
+
+export const personRelationshipStatusChanges = pgTable(
+  "person_relationship_status_changes",
+  {
+    id: uuid("id").default(uuidV7).primaryKey(),
+    relationshipId: uuid("relationship_id")
+      .notNull()
+      .references(() => personRelationships.id, { onDelete: "restrict" }),
+    fromStatus: assertionStatus("from_status"),
+    toStatus: assertionStatus("to_status").notNull(),
+    reason: text("reason").notNull(),
+    createdByRunId: uuid("created_by_run_id")
+      .notNull()
+      .references(() => ingestionRuns.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", {
+      withTimezone: true,
+      mode: "date",
+    })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("person_relationship_status_changes_relationship_idx").on(
+      table.relationshipId,
+    ),
+    index("person_relationship_status_changes_run_idx").on(
+      table.createdByRunId,
+    ),
+    check(
+      "person_relationship_status_changes_transition_check",
+      sql`${table.fromStatus} IS NULL OR ${table.fromStatus} <> ${table.toStatus}`,
+    ),
+    check(
+      "person_relationship_status_changes_reason_not_blank",
+      sql`btrim(${table.reason}) <> ''`,
     ),
   ],
 )
@@ -494,6 +667,12 @@ export const entityStatusChanges = pgTable(
 export type Entity = typeof entities.$inferSelect
 export type Person = typeof people.$inferSelect
 export type PersonName = typeof personNames.$inferSelect
+export type PersonGenderChange = typeof personGenderChanges.$inferSelect
+export type PersonRelationship = typeof personRelationships.$inferSelect
+export type PersonRelationshipEvidence =
+  typeof personRelationshipEvidence.$inferSelect
+export type PersonRelationshipStatusChange =
+  typeof personRelationshipStatusChanges.$inferSelect
 export type EntitySearchTerm = typeof entitySearchTerms.$inferSelect
 export type Source = typeof sources.$inferSelect
 export type SourcePassage = typeof sourcePassages.$inferSelect

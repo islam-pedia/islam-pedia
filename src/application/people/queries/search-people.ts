@@ -27,6 +27,7 @@ export async function searchPeople(
         ${entities.mergedIntoEntityId} AS "mergedIntoEntityId",
         ${people.nameOriginal} AS "nameOriginal",
         ${people.nameLatin} AS "nameLatin",
+        ${people.gender} AS "gender",
         ${entities.createdAt} AS "createdAt",
         greatest(
           CASE
@@ -154,6 +155,7 @@ export async function searchPeople(
     mergedIntoEntityId: row.mergedIntoEntityId,
     nameOriginal: row.nameOriginal,
     nameLatin: row.nameLatin,
+    gender: row.gender,
     names: row.names,
     keywords: row.keywords,
     createdAt: row.createdAt.toISOString(),

@@ -15,6 +15,7 @@ export async function listPeopleCreatedByRun(
       mergedIntoEntityId: entities.mergedIntoEntityId,
       nameOriginal: people.nameOriginal,
       nameLatin: people.nameLatin,
+      gender: people.gender,
       createdAt: entities.createdAt,
     })
     .from(entities)

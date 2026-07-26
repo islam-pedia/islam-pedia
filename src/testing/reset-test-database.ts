@@ -8,7 +8,11 @@ import {
   entityStatusChanges,
   ingestionRuns,
   people,
+  personGenderChanges,
   personNames,
+  personRelationshipEvidence,
+  personRelationshipStatusChanges,
+  personRelationships,
   sourcePassages,
   sources,
 } from "@/db/schema"
@@ -44,6 +48,10 @@ export async function resetTestDatabase(databaseUrl: string): Promise<void> {
       TRUNCATE TABLE
         ${entityEvidence},
         ${entityStatusChanges},
+        ${personRelationshipEvidence},
+        ${personRelationshipStatusChanges},
+        ${personRelationships},
+        ${personGenderChanges},
         ${sourcePassages},
         ${sources},
         ${entitySearchTerms},

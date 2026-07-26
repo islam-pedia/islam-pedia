@@ -5,6 +5,11 @@ import type {
   SourceVerification,
 } from "@/domain/evidence/source-policy"
 import type { PersonNameType } from "@/domain/people/names"
+import type {
+  PersonGender,
+  PersonRelationshipDirection,
+  PersonRelationshipType,
+} from "@/domain/people/relationships"
 
 export type {
   HadithGrade,
@@ -13,6 +18,11 @@ export type {
   SourceVerification,
 } from "@/domain/evidence/source-policy"
 export type { PersonNameType } from "@/domain/people/names"
+export type {
+  PersonGender,
+  PersonRelationshipDirection,
+  PersonRelationshipType,
+} from "@/domain/people/relationships"
 
 export type PersonStatus = "provisional" | "active" | "merged"
 
@@ -24,6 +34,7 @@ export interface IngestionSourceInput {
 export interface PersonInput {
   nameOriginal: string
   nameLatin: string
+  gender?: PersonGender
   nameType?: PersonNameType
   names?: PersonNameInput[]
   keywords?: string[]
@@ -105,12 +116,33 @@ export interface ActivatePersonInput {
   evidence: ActivatePersonEvidenceInput[]
 }
 
+export interface SetPersonGenderInput {
+  operationKey: string
+  entityId: string
+  gender: PersonGender
+  reason: string
+  instruction?: string
+  source?: IngestionSourceInput
+}
+
+export interface AddPersonRelationshipInput {
+  operationKey: string
+  fromPersonId: string
+  toPersonId: string
+  type: PersonRelationshipType
+  status: AssertionStatus
+  reason: string
+  instruction?: string
+  evidence: ActivatePersonEvidenceInput[]
+}
+
 export interface PersonView {
   entityId: string
   status: PersonStatus
   mergedIntoEntityId: string | null
   nameOriginal: string
   nameLatin: string
+  gender: PersonGender
   names: PersonNameView[]
   keywords: string[]
   createdAt: string
@@ -161,6 +193,26 @@ export interface ActivatePersonResult extends Record<string, unknown> {
   statusChangeId: string
 }
 
+export interface SetPersonGenderResult extends Record<string, unknown> {
+  runId: string
+  replayed: boolean
+  entityId: string
+  previousGender: PersonGender
+  gender: PersonGender
+  changed: boolean
+  genderChangeId: string | null
+}
+
+export interface AddPersonRelationshipResult extends Record<string, unknown> {
+  runId: string
+  replayed: boolean
+  relationshipId: string
+  created: boolean
+  status: AssertionStatus
+  evidenceIds: string[]
+  statusChangeId: string | null
+}
+
 export interface PersonEvidenceView {
   evidenceId: string
   assertion: string
@@ -204,11 +256,59 @@ export interface GetPersonEvidenceResult extends Record<string, unknown> {
   statusHistory: PersonStatusChangeView[]
 }
 
+export interface RelatedPersonView {
+  entityId: string
+  gender: PersonGender
+  nameOriginal: string
+  nameLatin: string
+}
+
+export interface PersonRelationshipEvidenceView {
+  evidenceId: string
+  assertion: string
+  interpretation: EvidenceInterpretation
+  status: AssertionStatus
+  notes: string | null
+  source: PersonEvidenceView["source"]
+  passage: PersonEvidenceView["passage"]
+  createdAt: string
+}
+
+export interface PersonRelationshipStatusChangeView {
+  statusChangeId: string
+  fromStatus: AssertionStatus | null
+  toStatus: AssertionStatus
+  reason: string
+  runId: string
+  createdAt: string
+}
+
+export interface PersonRelationshipView {
+  relationshipId: string
+  type: PersonRelationshipType
+  status: AssertionStatus
+  direction: PersonRelationshipDirection
+  label: string
+  fromPerson: RelatedPersonView
+  toPerson: RelatedPersonView
+  relatedPerson: RelatedPersonView
+  evidence: PersonRelationshipEvidenceView[]
+  statusHistory: PersonRelationshipStatusChangeView[]
+  createdAt: string
+  updatedAt: string
+}
+
+export interface GetPersonRelationshipsResult extends Record<string, unknown> {
+  entityId: string
+  relationships: PersonRelationshipView[]
+}
+
 export interface PreparedPerson {
   nameOriginal: string
   nameOriginalNormalized: string
   nameLatin: string
   nameLatinNormalized: string
+  gender: PersonGender
   names: PreparedPersonName[]
   keywords: Array<{
     term: string
@@ -231,6 +331,7 @@ export interface PersonRow {
   mergedIntoEntityId: string | null
   nameOriginal: string
   nameLatin: string
+  gender: PersonGender
   names: PersonNameView[]
   keywords: string[]
   createdAt: Date

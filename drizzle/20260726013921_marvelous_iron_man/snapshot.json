@@ -1,0 +1,3219 @@
+{
+  "version": "8",
+  "dialect": "postgres",
+  "id": "3bbe0365-22da-4c29-923f-997fb1ac5507",
+  "prevIds": ["835f2cb3-1b04-46eb-a8fa-4620cbded2d7"],
+  "ddl": [
+    {
+      "values": ["accepted", "uncertain", "disputed", "retracted"],
+      "name": "assertion_status",
+      "entityType": "enums",
+      "schema": "public"
+    },
+    {
+      "values": ["person"],
+      "name": "entity_kind",
+      "entityType": "enums",
+      "schema": "public"
+    },
+    {
+      "values": ["provisional", "active", "merged"],
+      "name": "entity_status",
+      "entityType": "enums",
+      "schema": "public"
+    },
+    {
+      "values": ["explicit", "inferred"],
+      "name": "evidence_interpretation",
+      "entityType": "enums",
+      "schema": "public"
+    },
+    {
+      "values": ["male", "female", "unknown"],
+      "name": "person_gender",
+      "entityType": "enums",
+      "schema": "public"
+    },
+    {
+      "values": ["personal", "kunyah", "laqab", "nisbah", "nasab", "alias"],
+      "name": "person_name_type",
+      "entityType": "enums",
+      "schema": "public"
+    },
+    {
+      "values": [
+        "biological_parent_of",
+        "milk_parent_of",
+        "adoptive_parent_of",
+        "guardian_of",
+        "husband_of",
+        "teacher_of"
+      ],
+      "name": "person_relationship_type",
+      "entityType": "enums",
+      "schema": "public"
+    },
+    {
+      "values": [
+        "quran",
+        "hadith",
+        "salaf_report",
+        "salafiyyun_scholar",
+        "context_only"
+      ],
+      "name": "source_category",
+      "entityType": "enums",
+      "schema": "public"
+    },
+    {
+      "values": ["salafiyyun", "context_only"],
+      "name": "source_methodology",
+      "entityType": "enums",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "entities",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "entity_evidence",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "entity_search_terms",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "entity_status_changes",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "ingestion_runs",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "people",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "person_gender_changes",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "person_names",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "person_relationship_evidence",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "person_relationship_status_changes",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "person_relationships",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "source_passages",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "isRlsEnabled": false,
+      "name": "sources",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "uuidv7()",
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "entities"
+    },
+    {
+      "type": "entity_kind",
+      "typeSchema": "public",
+      "notNull": true,
+      "dimensions": 0,
+      "default": "'person'",
+      "generated": null,
+      "identity": null,
+      "name": "kind",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "entities"
+    },
+    {
+      "type": "entity_status",
+      "typeSchema": "public",
+      "notNull": true,
+      "dimensions": 0,
+      "default": "'provisional'",
+      "generated": null,
+      "identity": null,
+      "name": "status",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "entities"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "merged_into_entity_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "entities"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "created_by_run_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "entities"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "entities"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "updated_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "entities"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "uuidv7()",
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "entity_evidence"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "entity_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "entity_evidence"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "passage_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "entity_evidence"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "assertion",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "entity_evidence"
+    },
+    {
+      "type": "evidence_interpretation",
+      "typeSchema": "public",
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "interpretation",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "entity_evidence"
+    },
+    {
+      "type": "assertion_status",
+      "typeSchema": "public",
+      "notNull": true,
+      "dimensions": 0,
+      "default": "'accepted'",
+      "generated": null,
+      "identity": null,
+      "name": "status",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "entity_evidence"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "notes",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "entity_evidence"
+    },
+    {
+      "type": "jsonb",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "'{}'",
+      "generated": null,
+      "identity": null,
+      "name": "qualifiers",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "entity_evidence"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "created_by_run_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "entity_evidence"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "entity_evidence"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "uuidv7()",
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "entity_search_terms"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "entity_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "entity_search_terms"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "term",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "entity_search_terms"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "normalized_term",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "entity_search_terms"
+    },
+    {
+      "type": "smallint",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "50",
+      "generated": null,
+      "identity": null,
+      "name": "weight",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "entity_search_terms"
+    },
+    {
+      "type": "smallint",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "1",
+      "generated": null,
+      "identity": null,
+      "name": "normalization_version",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "entity_search_terms"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "created_by_run_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "entity_search_terms"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "entity_search_terms"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "uuidv7()",
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "entity_status_changes"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "entity_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "entity_status_changes"
+    },
+    {
+      "type": "entity_status",
+      "typeSchema": "public",
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "from_status",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "entity_status_changes"
+    },
+    {
+      "type": "entity_status",
+      "typeSchema": "public",
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "to_status",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "entity_status_changes"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "reason",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "entity_status_changes"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "created_by_run_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "entity_status_changes"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "entity_status_changes"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "uuidv7()",
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "ingestion_runs"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "idempotency_key",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "ingestion_runs"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "instruction",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "ingestion_runs"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "source_label",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "ingestion_runs"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "source_uri",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "ingestion_runs"
+    },
+    {
+      "type": "jsonb",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "'{}'",
+      "generated": null,
+      "identity": null,
+      "name": "metadata",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "ingestion_runs"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "ingestion_runs"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "entity_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "people"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "name_original",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "people"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "name_original_normalized",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "people"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "name_latin",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "people"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "name_latin_normalized",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "people"
+    },
+    {
+      "type": "person_gender",
+      "typeSchema": "public",
+      "notNull": true,
+      "dimensions": 0,
+      "default": "'unknown'",
+      "generated": null,
+      "identity": null,
+      "name": "gender",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "people"
+    },
+    {
+      "type": "smallint",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "1",
+      "generated": null,
+      "identity": null,
+      "name": "normalization_version",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "people"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "uuidv7()",
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "person_gender_changes"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "entity_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "person_gender_changes"
+    },
+    {
+      "type": "person_gender",
+      "typeSchema": "public",
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "from_gender",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "person_gender_changes"
+    },
+    {
+      "type": "person_gender",
+      "typeSchema": "public",
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "to_gender",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "person_gender_changes"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "reason",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "person_gender_changes"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "created_by_run_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "person_gender_changes"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "person_gender_changes"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "uuidv7()",
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "person_names"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "entity_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "person_names"
+    },
+    {
+      "type": "person_name_type",
+      "typeSchema": "public",
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "type",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "person_names"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "name_original",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "person_names"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "name_original_normalized",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "person_names"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "name_latin",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "person_names"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "name_latin_normalized",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "person_names"
+    },
+    {
+      "type": "boolean",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "false",
+      "generated": null,
+      "identity": null,
+      "name": "is_primary",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "person_names"
+    },
+    {
+      "type": "smallint",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "1",
+      "generated": null,
+      "identity": null,
+      "name": "normalization_version",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "person_names"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "created_by_run_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "person_names"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "person_names"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "uuidv7()",
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "person_relationship_evidence"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "relationship_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "person_relationship_evidence"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "passage_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "person_relationship_evidence"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "assertion",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "person_relationship_evidence"
+    },
+    {
+      "type": "evidence_interpretation",
+      "typeSchema": "public",
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "interpretation",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "person_relationship_evidence"
+    },
+    {
+      "type": "assertion_status",
+      "typeSchema": "public",
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "status",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "person_relationship_evidence"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "notes",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "person_relationship_evidence"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "created_by_run_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "person_relationship_evidence"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "person_relationship_evidence"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "uuidv7()",
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "person_relationship_status_changes"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "relationship_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "person_relationship_status_changes"
+    },
+    {
+      "type": "assertion_status",
+      "typeSchema": "public",
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "from_status",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "person_relationship_status_changes"
+    },
+    {
+      "type": "assertion_status",
+      "typeSchema": "public",
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "to_status",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "person_relationship_status_changes"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "reason",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "person_relationship_status_changes"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "created_by_run_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "person_relationship_status_changes"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "person_relationship_status_changes"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "uuidv7()",
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "person_relationships"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "from_person_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "person_relationships"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "to_person_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "person_relationships"
+    },
+    {
+      "type": "person_relationship_type",
+      "typeSchema": "public",
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "type",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "person_relationships"
+    },
+    {
+      "type": "assertion_status",
+      "typeSchema": "public",
+      "notNull": true,
+      "dimensions": 0,
+      "default": "'accepted'",
+      "generated": null,
+      "identity": null,
+      "name": "status",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "person_relationships"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "created_by_run_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "person_relationships"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "person_relationships"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "updated_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "person_relationships"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "uuidv7()",
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "source_passages"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "source_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "source_passages"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "passage",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "source_passages"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "language",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "source_passages"
+    },
+    {
+      "type": "jsonb",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "'{}'",
+      "generated": null,
+      "identity": null,
+      "name": "locator",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "source_passages"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "created_by_run_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "source_passages"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "source_passages"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "uuidv7()",
+      "generated": null,
+      "identity": null,
+      "name": "id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "sources"
+    },
+    {
+      "type": "source_category",
+      "typeSchema": "public",
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "category",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "sources"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "label",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "sources"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "uri",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "sources"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "author",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "sources"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "work_title",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "sources"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "edition",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "sources"
+    },
+    {
+      "type": "source_methodology",
+      "typeSchema": "public",
+      "notNull": true,
+      "dimensions": 0,
+      "default": "'salafiyyun'",
+      "generated": null,
+      "identity": null,
+      "name": "methodology",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "sources"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "methodology_basis",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "sources"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "'salafiyyun-v1'",
+      "generated": null,
+      "identity": null,
+      "name": "policy_version",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "sources"
+    },
+    {
+      "type": "jsonb",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "'{}'",
+      "generated": null,
+      "identity": null,
+      "name": "verification",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "sources"
+    },
+    {
+      "type": "jsonb",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "'{}'",
+      "generated": null,
+      "identity": null,
+      "name": "metadata",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "sources"
+    },
+    {
+      "type": "uuid",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "created_by_run_id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "sources"
+    },
+    {
+      "type": "timestamp with time zone",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "now()",
+      "generated": null,
+      "identity": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "sources"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "kind",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "status",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "entities_kind_status_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "entities"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "created_by_run_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "entities_created_by_run_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "entities"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "entity_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "entity_evidence_entity_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "entity_evidence"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "passage_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "entity_evidence_passage_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "entity_evidence"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "status",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "entity_evidence_status_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "entity_evidence"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "created_by_run_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "entity_evidence_created_by_run_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "entity_evidence"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "entity_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "normalized_term",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "entity_search_terms_entity_normalized_uidx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "entity_search_terms"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "entity_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "entity_search_terms_entity_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "entity_search_terms"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "created_by_run_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "entity_search_terms_created_by_run_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "entity_search_terms"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "normalized_term",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": {
+            "name": "gin_trgm_ops",
+            "default": false
+          }
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "gin",
+      "concurrently": false,
+      "name": "entity_search_terms_normalized_trgm_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "entity_search_terms"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "entity_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "entity_status_changes_entity_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "entity_status_changes"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "created_by_run_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "entity_status_changes_created_by_run_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "entity_status_changes"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "idempotency_key",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "ingestion_runs_idempotency_key_uidx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "ingestion_runs"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "name_original_normalized",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "people_name_original_normalized_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "people"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "name_latin_normalized",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "people_name_latin_normalized_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "people"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "name_original_normalized",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": {
+            "name": "gin_trgm_ops",
+            "default": false
+          }
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "gin",
+      "concurrently": false,
+      "name": "people_name_original_trgm_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "people"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "name_latin_normalized",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": {
+            "name": "gin_trgm_ops",
+            "default": false
+          }
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "gin",
+      "concurrently": false,
+      "name": "people_name_latin_trgm_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "people"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "entity_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "person_gender_changes_entity_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "person_gender_changes"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "created_by_run_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "person_gender_changes_created_by_run_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "person_gender_changes"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "entity_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "type",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "name_original_normalized",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "name_latin_normalized",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "person_names_entity_type_names_uidx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "person_names"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "entity_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": true,
+      "where": "\"is_primary\"",
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "person_names_entity_primary_uidx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "person_names"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "entity_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "type",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "person_names_entity_type_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "person_names"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "created_by_run_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "person_names_created_by_run_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "person_names"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "name_original_normalized",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": {
+            "name": "gin_trgm_ops",
+            "default": false
+          }
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "gin",
+      "concurrently": false,
+      "name": "person_names_original_trgm_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "person_names"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "name_latin_normalized",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": {
+            "name": "gin_trgm_ops",
+            "default": false
+          }
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "gin",
+      "concurrently": false,
+      "name": "person_names_latin_trgm_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "person_names"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "relationship_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "person_relationship_evidence_relationship_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "person_relationship_evidence"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "passage_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "person_relationship_evidence_passage_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "person_relationship_evidence"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "status",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "person_relationship_evidence_status_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "person_relationship_evidence"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "created_by_run_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "person_relationship_evidence_created_by_run_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "person_relationship_evidence"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "relationship_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "person_relationship_status_changes_relationship_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "person_relationship_status_changes"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "created_by_run_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "person_relationship_status_changes_run_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "person_relationship_status_changes"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "from_person_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "to_person_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "type",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "person_relationships_unique_fact_uidx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "person_relationships"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "from_person_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "type",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "person_relationships_from_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "person_relationships"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "to_person_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "type",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "person_relationships_to_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "person_relationships"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "status",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "person_relationships_status_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "person_relationships"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "created_by_run_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "person_relationships_created_by_run_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "person_relationships"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "source_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "source_passages_source_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "source_passages"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "created_by_run_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "source_passages_created_by_run_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "source_passages"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "created_by_run_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "sources_created_by_run_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "sources"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "category",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "methodology",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "sources_category_methodology_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "sources"
+    },
+    {
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "label",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "name": "sources_label_idx",
+      "entityType": "indexes",
+      "schema": "public",
+      "table": "sources"
+    },
+    {
+      "nameExplicit": false,
+      "columns": ["merged_into_entity_id"],
+      "schemaTo": "public",
+      "tableTo": "entities",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "entities_merged_into_entity_id_entities_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "entities"
+    },
+    {
+      "nameExplicit": false,
+      "columns": ["created_by_run_id"],
+      "schemaTo": "public",
+      "tableTo": "ingestion_runs",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "entities_created_by_run_id_ingestion_runs_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "entities"
+    },
+    {
+      "nameExplicit": false,
+      "columns": ["entity_id"],
+      "schemaTo": "public",
+      "tableTo": "entities",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "entity_evidence_entity_id_entities_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "entity_evidence"
+    },
+    {
+      "nameExplicit": false,
+      "columns": ["passage_id"],
+      "schemaTo": "public",
+      "tableTo": "source_passages",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "entity_evidence_passage_id_source_passages_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "entity_evidence"
+    },
+    {
+      "nameExplicit": false,
+      "columns": ["created_by_run_id"],
+      "schemaTo": "public",
+      "tableTo": "ingestion_runs",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "entity_evidence_created_by_run_id_ingestion_runs_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "entity_evidence"
+    },
+    {
+      "nameExplicit": false,
+      "columns": ["entity_id"],
+      "schemaTo": "public",
+      "tableTo": "entities",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "name": "entity_search_terms_entity_id_entities_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "entity_search_terms"
+    },
+    {
+      "nameExplicit": false,
+      "columns": ["created_by_run_id"],
+      "schemaTo": "public",
+      "tableTo": "ingestion_runs",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "entity_search_terms_created_by_run_id_ingestion_runs_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "entity_search_terms"
+    },
+    {
+      "nameExplicit": false,
+      "columns": ["entity_id"],
+      "schemaTo": "public",
+      "tableTo": "entities",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "entity_status_changes_entity_id_entities_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "entity_status_changes"
+    },
+    {
+      "nameExplicit": false,
+      "columns": ["created_by_run_id"],
+      "schemaTo": "public",
+      "tableTo": "ingestion_runs",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "entity_status_changes_created_by_run_id_ingestion_runs_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "entity_status_changes"
+    },
+    {
+      "nameExplicit": false,
+      "columns": ["entity_id"],
+      "schemaTo": "public",
+      "tableTo": "entities",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "name": "people_entity_id_entities_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "people"
+    },
+    {
+      "nameExplicit": false,
+      "columns": ["entity_id"],
+      "schemaTo": "public",
+      "tableTo": "people",
+      "columnsTo": ["entity_id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "person_gender_changes_entity_id_people_entity_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "person_gender_changes"
+    },
+    {
+      "nameExplicit": false,
+      "columns": ["created_by_run_id"],
+      "schemaTo": "public",
+      "tableTo": "ingestion_runs",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "person_gender_changes_created_by_run_id_ingestion_runs_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "person_gender_changes"
+    },
+    {
+      "nameExplicit": false,
+      "columns": ["entity_id"],
+      "schemaTo": "public",
+      "tableTo": "people",
+      "columnsTo": ["entity_id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "name": "person_names_entity_id_people_entity_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "person_names"
+    },
+    {
+      "nameExplicit": false,
+      "columns": ["created_by_run_id"],
+      "schemaTo": "public",
+      "tableTo": "ingestion_runs",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "person_names_created_by_run_id_ingestion_runs_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "person_names"
+    },
+    {
+      "nameExplicit": false,
+      "columns": ["relationship_id"],
+      "schemaTo": "public",
+      "tableTo": "person_relationships",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "person_relationship_evidence_DMvtBqt23HqH_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "person_relationship_evidence"
+    },
+    {
+      "nameExplicit": false,
+      "columns": ["passage_id"],
+      "schemaTo": "public",
+      "tableTo": "source_passages",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "person_relationship_evidence_passage_id_source_passages_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "person_relationship_evidence"
+    },
+    {
+      "nameExplicit": false,
+      "columns": ["created_by_run_id"],
+      "schemaTo": "public",
+      "tableTo": "ingestion_runs",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "person_relationship_evidence_mjfxnnQ9U5Gb_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "person_relationship_evidence"
+    },
+    {
+      "nameExplicit": false,
+      "columns": ["relationship_id"],
+      "schemaTo": "public",
+      "tableTo": "person_relationships",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "person_relationship_status_changes_pCq6vY6xBjY8_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "person_relationship_status_changes"
+    },
+    {
+      "nameExplicit": false,
+      "columns": ["created_by_run_id"],
+      "schemaTo": "public",
+      "tableTo": "ingestion_runs",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "person_relationship_status_changes_oeCkSdBw0Vo0_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "person_relationship_status_changes"
+    },
+    {
+      "nameExplicit": false,
+      "columns": ["from_person_id"],
+      "schemaTo": "public",
+      "tableTo": "people",
+      "columnsTo": ["entity_id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "person_relationships_from_person_id_people_entity_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "person_relationships"
+    },
+    {
+      "nameExplicit": false,
+      "columns": ["to_person_id"],
+      "schemaTo": "public",
+      "tableTo": "people",
+      "columnsTo": ["entity_id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "person_relationships_to_person_id_people_entity_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "person_relationships"
+    },
+    {
+      "nameExplicit": false,
+      "columns": ["created_by_run_id"],
+      "schemaTo": "public",
+      "tableTo": "ingestion_runs",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "person_relationships_created_by_run_id_ingestion_runs_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "person_relationships"
+    },
+    {
+      "nameExplicit": false,
+      "columns": ["source_id"],
+      "schemaTo": "public",
+      "tableTo": "sources",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "source_passages_source_id_sources_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "source_passages"
+    },
+    {
+      "nameExplicit": false,
+      "columns": ["created_by_run_id"],
+      "schemaTo": "public",
+      "tableTo": "ingestion_runs",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "source_passages_created_by_run_id_ingestion_runs_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "source_passages"
+    },
+    {
+      "nameExplicit": false,
+      "columns": ["created_by_run_id"],
+      "schemaTo": "public",
+      "tableTo": "ingestion_runs",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "RESTRICT",
+      "name": "sources_created_by_run_id_ingestion_runs_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "sources"
+    },
+    {
+      "columns": ["id"],
+      "nameExplicit": false,
+      "name": "entities_pkey",
+      "schema": "public",
+      "table": "entities",
+      "entityType": "pks"
+    },
+    {
+      "columns": ["id"],
+      "nameExplicit": false,
+      "name": "entity_evidence_pkey",
+      "schema": "public",
+      "table": "entity_evidence",
+      "entityType": "pks"
+    },
+    {
+      "columns": ["id"],
+      "nameExplicit": false,
+      "name": "entity_search_terms_pkey",
+      "schema": "public",
+      "table": "entity_search_terms",
+      "entityType": "pks"
+    },
+    {
+      "columns": ["id"],
+      "nameExplicit": false,
+      "name": "entity_status_changes_pkey",
+      "schema": "public",
+      "table": "entity_status_changes",
+      "entityType": "pks"
+    },
+    {
+      "columns": ["id"],
+      "nameExplicit": false,
+      "name": "ingestion_runs_pkey",
+      "schema": "public",
+      "table": "ingestion_runs",
+      "entityType": "pks"
+    },
+    {
+      "columns": ["entity_id"],
+      "nameExplicit": false,
+      "name": "people_pkey",
+      "schema": "public",
+      "table": "people",
+      "entityType": "pks"
+    },
+    {
+      "columns": ["id"],
+      "nameExplicit": false,
+      "name": "person_gender_changes_pkey",
+      "schema": "public",
+      "table": "person_gender_changes",
+      "entityType": "pks"
+    },
+    {
+      "columns": ["id"],
+      "nameExplicit": false,
+      "name": "person_names_pkey",
+      "schema": "public",
+      "table": "person_names",
+      "entityType": "pks"
+    },
+    {
+      "columns": ["id"],
+      "nameExplicit": false,
+      "name": "person_relationship_evidence_pkey",
+      "schema": "public",
+      "table": "person_relationship_evidence",
+      "entityType": "pks"
+    },
+    {
+      "columns": ["id"],
+      "nameExplicit": false,
+      "name": "person_relationship_status_changes_pkey",
+      "schema": "public",
+      "table": "person_relationship_status_changes",
+      "entityType": "pks"
+    },
+    {
+      "columns": ["id"],
+      "nameExplicit": false,
+      "name": "person_relationships_pkey",
+      "schema": "public",
+      "table": "person_relationships",
+      "entityType": "pks"
+    },
+    {
+      "columns": ["id"],
+      "nameExplicit": false,
+      "name": "source_passages_pkey",
+      "schema": "public",
+      "table": "source_passages",
+      "entityType": "pks"
+    },
+    {
+      "columns": ["id"],
+      "nameExplicit": false,
+      "name": "sources_pkey",
+      "schema": "public",
+      "table": "sources",
+      "entityType": "pks"
+    },
+    {
+      "value": "(\n        (\"status\" = 'merged' AND \"merged_into_entity_id\" IS NOT NULL)\n        OR\n        (\"status\" <> 'merged' AND \"merged_into_entity_id\" IS NULL)\n      )",
+      "name": "entities_merge_state_check",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "entities"
+    },
+    {
+      "value": "\"merged_into_entity_id\" IS NULL OR \"merged_into_entity_id\" <> \"id\"",
+      "name": "entities_cannot_merge_into_self",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "entities"
+    },
+    {
+      "value": "btrim(\"assertion\") <> ''",
+      "name": "entity_evidence_assertion_not_blank",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "entity_evidence"
+    },
+    {
+      "value": "\"notes\" IS NULL OR btrim(\"notes\") <> ''",
+      "name": "entity_evidence_notes_not_blank",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "entity_evidence"
+    },
+    {
+      "value": "btrim(\"term\") <> ''",
+      "name": "entity_search_terms_term_not_blank",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "entity_search_terms"
+    },
+    {
+      "value": "btrim(\"normalized_term\") <> ''",
+      "name": "entity_search_terms_normalized_not_blank",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "entity_search_terms"
+    },
+    {
+      "value": "\"weight\" BETWEEN 1 AND 100",
+      "name": "entity_search_terms_weight_range",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "entity_search_terms"
+    },
+    {
+      "value": "\"normalization_version\" > 0",
+      "name": "entity_search_terms_normalization_version_positive",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "entity_search_terms"
+    },
+    {
+      "value": "\"from_status\" IS NULL OR \"from_status\" <> \"to_status\"",
+      "name": "entity_status_changes_transition_check",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "entity_status_changes"
+    },
+    {
+      "value": "btrim(\"reason\") <> ''",
+      "name": "entity_status_changes_reason_not_blank",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "entity_status_changes"
+    },
+    {
+      "value": "btrim(\"idempotency_key\") <> ''",
+      "name": "ingestion_runs_idempotency_key_not_blank",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "ingestion_runs"
+    },
+    {
+      "value": "btrim(\"name_original\") <> ''",
+      "name": "people_name_original_not_blank",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "people"
+    },
+    {
+      "value": "btrim(\"name_original_normalized\") <> ''",
+      "name": "people_name_original_normalized_not_blank",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "people"
+    },
+    {
+      "value": "btrim(\"name_latin\") <> ''",
+      "name": "people_name_latin_not_blank",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "people"
+    },
+    {
+      "value": "btrim(\"name_latin_normalized\") <> ''",
+      "name": "people_name_latin_normalized_not_blank",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "people"
+    },
+    {
+      "value": "\"normalization_version\" > 0",
+      "name": "people_normalization_version_positive",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "people"
+    },
+    {
+      "value": "\"from_gender\" IS NULL OR \"from_gender\" <> \"to_gender\"",
+      "name": "person_gender_changes_transition_check",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "person_gender_changes"
+    },
+    {
+      "value": "btrim(\"reason\") <> ''",
+      "name": "person_gender_changes_reason_not_blank",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "person_gender_changes"
+    },
+    {
+      "value": "btrim(\"name_original\") <> ''",
+      "name": "person_names_original_not_blank",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "person_names"
+    },
+    {
+      "value": "btrim(\"name_original_normalized\") <> ''",
+      "name": "person_names_original_normalized_not_blank",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "person_names"
+    },
+    {
+      "value": "btrim(\"name_latin\") <> ''",
+      "name": "person_names_latin_not_blank",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "person_names"
+    },
+    {
+      "value": "btrim(\"name_latin_normalized\") <> ''",
+      "name": "person_names_latin_normalized_not_blank",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "person_names"
+    },
+    {
+      "value": "\"normalization_version\" > 0",
+      "name": "person_names_normalization_version_positive",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "person_names"
+    },
+    {
+      "value": "btrim(\"assertion\") <> ''",
+      "name": "person_relationship_evidence_assertion_not_blank",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "person_relationship_evidence"
+    },
+    {
+      "value": "\"notes\" IS NULL OR btrim(\"notes\") <> ''",
+      "name": "person_relationship_evidence_notes_not_blank",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "person_relationship_evidence"
+    },
+    {
+      "value": "\"from_status\" IS NULL OR \"from_status\" <> \"to_status\"",
+      "name": "person_relationship_status_changes_transition_check",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "person_relationship_status_changes"
+    },
+    {
+      "value": "btrim(\"reason\") <> ''",
+      "name": "person_relationship_status_changes_reason_not_blank",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "person_relationship_status_changes"
+    },
+    {
+      "value": "\"from_person_id\" <> \"to_person_id\"",
+      "name": "person_relationships_not_self",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "person_relationships"
+    },
+    {
+      "value": "btrim(\"passage\") <> ''",
+      "name": "source_passages_passage_not_blank",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "source_passages"
+    },
+    {
+      "value": "\"language\" IS NULL OR btrim(\"language\") <> ''",
+      "name": "source_passages_language_not_blank",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "source_passages"
+    },
+    {
+      "value": "btrim(\"label\") <> ''",
+      "name": "sources_label_not_blank",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "sources"
+    },
+    {
+      "value": "\"uri\" IS NULL OR btrim(\"uri\") <> ''",
+      "name": "sources_uri_not_blank",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "sources"
+    },
+    {
+      "value": "\"author\" IS NULL OR btrim(\"author\") <> ''",
+      "name": "sources_author_not_blank",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "sources"
+    },
+    {
+      "value": "\"work_title\" IS NULL OR btrim(\"work_title\") <> ''",
+      "name": "sources_work_title_not_blank",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "sources"
+    },
+    {
+      "value": "\"edition\" IS NULL OR btrim(\"edition\") <> ''",
+      "name": "sources_edition_not_blank",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "sources"
+    },
+    {
+      "value": "btrim(\"methodology_basis\") <> ''",
+      "name": "sources_methodology_basis_not_blank",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "sources"
+    },
+    {
+      "value": "btrim(\"policy_version\") <> ''",
+      "name": "sources_policy_version_not_blank",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "sources"
+    },
+    {
+      "value": "(\n        (\"category\" = 'context_only' AND \"methodology\" = 'context_only')\n        OR\n        (\"category\" <> 'context_only' AND \"methodology\" = 'salafiyyun')\n      )",
+      "name": "sources_context_methodology_check",
+      "entityType": "checks",
+      "schema": "public",
+      "table": "sources"
+    }
+  ],
+  "renames": []
+}

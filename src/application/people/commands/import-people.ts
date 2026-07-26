@@ -6,6 +6,7 @@ import {
   entityStatusChanges,
   ingestionRuns,
   people,
+  personGenderChanges,
   personNames,
 } from "@/db/schema"
 import {
@@ -171,7 +172,16 @@ export async function importPeople(
         nameOriginalNormalized: person.nameOriginalNormalized,
         nameLatin: person.nameLatin,
         nameLatinNormalized: person.nameLatinNormalized,
+        gender: person.gender,
         normalizationVersion: SEARCH_NORMALIZATION_VERSION,
+      })
+
+      await transaction.insert(personGenderChanges).values({
+        entityId: entity.id,
+        fromGender: null,
+        toGender: person.gender,
+        reason: "Gender recorded during entity creation.",
+        createdByRunId: run.id,
       })
 
       const insertedNames = await transaction
@@ -217,6 +227,7 @@ export async function importPeople(
             mergedIntoEntityId: entity.mergedIntoEntityId,
             nameOriginal: person.nameOriginal,
             nameLatin: person.nameLatin,
+            gender: person.gender,
             names: insertedNames,
             keywords: person.keywords.map(({ term }) => term),
             createdAt: entity.createdAt,

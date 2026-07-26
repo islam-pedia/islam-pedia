@@ -12,6 +12,7 @@ export async function getPerson(entityId: string): Promise<PersonView | null> {
       mergedIntoEntityId: entities.mergedIntoEntityId,
       nameOriginal: people.nameOriginal,
       nameLatin: people.nameLatin,
+      gender: people.gender,
       createdAt: entities.createdAt,
     })
     .from(entities)

@@ -65,6 +65,18 @@ entities and their relationships can be explored easily.
   the personal name (ism), `kunyah` for forms such as Abu/Umm, and the explicit
   `laqab`, `nisbah`, `nasab`, or `alias` types for their respective meanings.
   The row marked `is_primary` must match the display name stored on `people`.
+- `people.gender` is explicit structured data with `male`, `female`, or
+  `unknown`. Never infer it from a name, kunyah, title, or relationship label.
+- Store person relationships once in their canonical direction: parent to
+  child, husband to wife (`husband_of`), guardian to ward, and teacher to
+  student. Derive inverse labels such as father, mother, son, daughter, husband,
+  wife, teacher, and student when reading.
+- Record both known biological parents independently. Never infer a father or
+  mother from a marriage relationship, and keep biological, milk, adoptive, and
+  guardian relationships distinct.
+- Every person relationship must retain its assertion status, source passage
+  evidence, and status history. Accepted relationships require explicit
+  non-context-only evidence; uncertain or disputed claims remain queryable.
 - Normalized columns are derived search data. Never overwrite display names
   with their normalized forms.
 - `entity_search_terms` contains search-only keywords and spelling variants.

@@ -4,15 +4,22 @@ import {
   activatePerson,
   addPersonKeywords,
   addPersonNames,
+  addPersonRelationship,
   getPerson,
   getPersonEvidence,
+  getPersonRelationships,
   IdempotencyConflictError,
   importPeople,
   PeopleInputError,
   searchPeople,
+  setPersonGender,
 } from "@/application/people"
 import { hadithGrades, sourceCategories } from "@/domain/evidence/source-policy"
 import { personNameTypes } from "@/domain/people/names"
+import {
+  personGenders,
+  personRelationshipTypes,
+} from "@/domain/people/relationships"
 
 const sourceInputSchema = z.object({
   label: z.string().trim().min(1).max(500).optional(),
@@ -20,6 +27,14 @@ const sourceInputSchema = z.object({
 })
 
 const personNameTypeSchema = z.enum(personNameTypes)
+const personGenderSchema = z.enum(personGenders)
+const personRelationshipTypeSchema = z.enum(personRelationshipTypes)
+const assertionStatusSchema = z.enum([
+  "accepted",
+  "uncertain",
+  "disputed",
+  "retracted",
+])
 
 const personNameInputSchema = z.object({
   type: personNameTypeSchema,
@@ -59,12 +74,23 @@ const evidenceSourceSchema = z.object({
     .optional(),
 })
 
+const evidenceInputSchema = z.object({
+  source: evidenceSourceSchema,
+  passage: z.string().trim().min(1).max(20_000),
+  language: z.string().trim().min(1).max(100).optional(),
+  locator: evidenceLocatorSchema.optional(),
+  assertion: z.string().trim().min(1).max(5_000),
+  interpretation: z.enum(["explicit", "inferred"]),
+  notes: z.string().trim().min(1).max(5_000).optional(),
+})
+
 const personOutputSchema = z.object({
   entityId: z.uuid(),
   status: z.enum(["provisional", "active", "merged"]),
   mergedIntoEntityId: z.uuid().nullable(),
   nameOriginal: z.string(),
   nameLatin: z.string(),
+  gender: personGenderSchema,
   names: z.array(personNameOutputSchema),
   keywords: z.array(z.string()),
   createdAt: z.string(),
@@ -130,6 +156,69 @@ const personEvidenceOutputSchema = z.object({
   ),
 })
 
+const relatedPersonOutputSchema = z.object({
+  entityId: z.uuid(),
+  gender: personGenderSchema,
+  nameOriginal: z.string(),
+  nameLatin: z.string(),
+})
+
+const relationshipEvidenceOutputSchema = z.object({
+  evidenceId: z.uuid(),
+  assertion: z.string(),
+  interpretation: z.enum(["explicit", "inferred"]),
+  status: assertionStatusSchema,
+  notes: z.string().nullable(),
+  source: z.object({
+    sourceId: z.uuid(),
+    category: z.enum(sourceCategories),
+    label: z.string(),
+    uri: z.string().nullable(),
+    author: z.string().nullable(),
+    workTitle: z.string().nullable(),
+    edition: z.string().nullable(),
+    methodology: z.enum(["salafiyyun", "context_only"]),
+    methodologyBasis: z.string(),
+    policyVersion: z.string(),
+    verification: z.object({
+      hadithGrade: z.enum(hadithGrades).optional(),
+      gradedBy: z.string().optional(),
+      notes: z.string().optional(),
+    }),
+  }),
+  passage: z.object({
+    passageId: z.uuid(),
+    text: z.string(),
+    language: z.string().nullable(),
+    locator: evidenceLocatorSchema,
+  }),
+  createdAt: z.string(),
+})
+
+const personRelationshipOutputSchema = z.object({
+  relationshipId: z.uuid(),
+  type: personRelationshipTypeSchema,
+  status: assertionStatusSchema,
+  direction: z.enum(["outgoing", "incoming"]),
+  label: z.string(),
+  fromPerson: relatedPersonOutputSchema,
+  toPerson: relatedPersonOutputSchema,
+  relatedPerson: relatedPersonOutputSchema,
+  evidence: z.array(relationshipEvidenceOutputSchema),
+  statusHistory: z.array(
+    z.object({
+      statusChangeId: z.uuid(),
+      fromStatus: assertionStatusSchema.nullable(),
+      toStatus: assertionStatusSchema,
+      reason: z.string(),
+      runId: z.uuid(),
+      createdAt: z.string(),
+    }),
+  ),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+})
+
 function toolError(error: unknown): {
   content: Array<{ type: "text"; text: string }>
   isError: true
@@ -173,6 +262,7 @@ export function registerPeopleTools(server: McpServer): void {
             z.object({
               nameOriginal: z.string().trim().min(1).max(500),
               nameLatin: z.string().trim().min(1).max(500),
+              gender: personGenderSchema.default("unknown"),
               nameType: personNameTypeSchema.default("personal"),
               names: z.array(personNameInputSchema).max(100).default([]),
               keywords: z
@@ -306,6 +396,141 @@ export function registerPeopleTools(server: McpServer): void {
   )
 
   server.registerTool(
+    "set_person_gender",
+    {
+      title: "Set person gender",
+      description:
+        "Set or correct a person's gender with an idempotent audited change. Existing husband_of relationships are protected from incompatible changes.",
+      inputSchema: z.object({
+        operationKey: z.string().trim().min(1).max(300),
+        entityId: z.uuid(),
+        gender: personGenderSchema,
+        reason: z.string().trim().min(1).max(5_000),
+        instruction: z.string().trim().min(1).max(5_000).optional(),
+        source: sourceInputSchema.optional(),
+      }),
+      outputSchema: z.object({
+        runId: z.uuid(),
+        replayed: z.boolean(),
+        entityId: z.uuid(),
+        previousGender: personGenderSchema,
+        gender: personGenderSchema,
+        changed: z.boolean(),
+        genderChangeId: z.uuid().nullable(),
+      }),
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async (input) => {
+      try {
+        const output = await setPersonGender(input)
+
+        return {
+          content: [{ type: "text", text: JSON.stringify(output) }],
+          structuredContent: output,
+        }
+      } catch (error) {
+        return toolError(error)
+      }
+    },
+  )
+
+  server.registerTool(
+    "add_person_relationship",
+    {
+      title: "Add person relationship",
+      description:
+        "Create or support a directed relationship with evidence and status. Store parent to child, husband to wife, guardian to ward, and teacher to student.",
+      inputSchema: z.object({
+        operationKey: z.string().trim().min(1).max(300),
+        fromPersonId: z.uuid(),
+        toPersonId: z.uuid(),
+        type: personRelationshipTypeSchema,
+        status: assertionStatusSchema.default("accepted"),
+        reason: z.string().trim().min(1).max(5_000),
+        instruction: z.string().trim().min(1).max(5_000).optional(),
+        evidence: z.array(evidenceInputSchema).min(1).max(20),
+      }),
+      outputSchema: z.object({
+        runId: z.uuid(),
+        replayed: z.boolean(),
+        relationshipId: z.uuid(),
+        created: z.boolean(),
+        status: assertionStatusSchema,
+        evidenceIds: z.array(z.uuid()),
+        statusChangeId: z.uuid().nullable(),
+      }),
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async (input) => {
+      try {
+        const output = await addPersonRelationship(input)
+
+        return {
+          content: [{ type: "text", text: JSON.stringify(output) }],
+          structuredContent: output,
+        }
+      } catch (error) {
+        return toolError(error)
+      }
+    },
+  )
+
+  server.registerTool(
+    "get_person_relationships",
+    {
+      title: "Get person relationships",
+      description:
+        "Get all directed relationships for a person with derived labels, related people, evidence, and status history.",
+      inputSchema: z.object({
+        entityId: z.uuid(),
+      }),
+      outputSchema: z.object({
+        entityId: z.uuid(),
+        relationships: z.array(personRelationshipOutputSchema),
+      }),
+      annotations: {
+        readOnlyHint: true,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async ({ entityId }) => {
+      try {
+        const output = await getPersonRelationships(entityId)
+
+        if (!output) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: `Person "${entityId}" was not found.`,
+              },
+            ],
+            isError: true,
+          }
+        }
+
+        return {
+          content: [{ type: "text", text: JSON.stringify(output) }],
+          structuredContent: output,
+        }
+      } catch (error) {
+        return toolError(error)
+      }
+    },
+  )
+
+  server.registerTool(
     "add_person_names",
     {
       title: "Add person names",
@@ -402,20 +627,7 @@ export function registerPeopleTools(server: McpServer): void {
         entityId: z.uuid(),
         reason: z.string().trim().min(1).max(5_000),
         instruction: z.string().trim().min(1).max(5_000).optional(),
-        evidence: z
-          .array(
-            z.object({
-              source: evidenceSourceSchema,
-              passage: z.string().trim().min(1).max(20_000),
-              language: z.string().trim().min(1).max(100).optional(),
-              locator: evidenceLocatorSchema.optional(),
-              assertion: z.string().trim().min(1).max(5_000),
-              interpretation: z.enum(["explicit", "inferred"]),
-              notes: z.string().trim().min(1).max(5_000).optional(),
-            }),
-          )
-          .min(1)
-          .max(20),
+        evidence: z.array(evidenceInputSchema).min(1).max(20),
       }),
       outputSchema: activatePersonOutputSchema,
       annotations: {

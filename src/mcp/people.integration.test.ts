@@ -46,6 +46,7 @@ integrationTest(
           {
             nameOriginal: "عَبْدُ ٱللَّٰهِ بْنُ أَبِي قُحَافَةَ",
             nameLatin: "Abdullah ibn Abi Quhafah",
+            gender: "male",
             nameType: "personal",
             names: [
               {
@@ -55,6 +56,18 @@ integrationTest(
               },
             ],
             keywords: ["Abd Allah", "Ibnu Abi Quhafah", uniqueSearchTerm],
+          },
+          {
+            nameOriginal: "عَائِشَة بِنْت أَبِي بَكْرٍ",
+            nameLatin: "Aisyah bint Abu Bakar",
+            gender: "female",
+            keywords: ["Aisha"],
+          },
+          {
+            nameOriginal: "أُمُّ رُومَان",
+            nameLatin: "Ummu Ruman",
+            gender: "unknown",
+            keywords: [],
           },
         ],
       }
@@ -67,12 +80,25 @@ integrationTest(
 
       const importedContent = imported.structuredContent as {
         replayed: boolean
-        people: Array<{ entityId: string }>
+        people: Array<{ entityId: string; gender: string }>
       }
       const entityId = importedContent.people[0]?.entityId
+      const aisyahId = importedContent.people[1]?.entityId
+      const ummuRumanId = importedContent.people[2]?.entityId
+
+      if (!entityId || !aisyahId || !ummuRumanId) {
+        throw new Error("Integration import did not return all person IDs.")
+      }
 
       expect(importedContent.replayed).toBe(false)
       expect(entityId).toBeString()
+      expect(aisyahId).toBeString()
+      expect(ummuRumanId).toBeString()
+      expect(importedContent.people.map(({ gender }) => gender)).toEqual([
+        "male",
+        "female",
+        "unknown",
+      ])
 
       const replayed = await client.callTool({
         name: "import_people",
@@ -83,6 +109,158 @@ integrationTest(
       expect(
         (replayed.structuredContent as { replayed: boolean }).replayed,
       ).toBe(true)
+
+      const genderInput = {
+        operationKey: `integration-gender-${testId}`,
+        entityId: ummuRumanId,
+        gender: "female",
+        reason: "Integration fixture records Ummu Ruman as female.",
+      } as const
+      const genderResult = await client.callTool({
+        name: "set_person_gender",
+        arguments: genderInput,
+      })
+
+      expect(genderResult.isError).not.toBe(true)
+      expect(genderResult.structuredContent).toMatchObject({
+        replayed: false,
+        entityId: ummuRumanId,
+        previousGender: "unknown",
+        gender: "female",
+        changed: true,
+        genderChangeId: expect.any(String),
+      })
+
+      const replayedGender = await client.callTool({
+        name: "set_person_gender",
+        arguments: genderInput,
+      })
+
+      expect(replayedGender.isError).not.toBe(true)
+      expect(replayedGender.structuredContent).toMatchObject({
+        replayed: true,
+        previousGender: "unknown",
+        gender: "female",
+        changed: true,
+      })
+
+      const relationshipEvidence = (label: string, assertion: string) =>
+        [
+          {
+            source: {
+              category: "salaf_report",
+              label,
+              uri: `https://example.test/${label.toLowerCase().replaceAll(" ", "-")}`,
+              author: "Test Genealogist",
+              workTitle: "Test Genealogy",
+              edition: "Test Edition",
+              methodologyBasis:
+                "Synthetic Salaf report fixture for relationship testing.",
+            },
+            passage: assertion,
+            language: "en",
+            locator: {
+              page: "1",
+              section: "Relationship fixture",
+            },
+            assertion,
+            interpretation: "explicit",
+            notes: "Synthetic evidence used only by the integration test.",
+          },
+        ] as const
+
+      const fatherRelationshipInput = {
+        operationKey: `integration-father-${testId}`,
+        fromPersonId: entityId,
+        toPersonId: aisyahId,
+        type: "biological_parent_of",
+        status: "accepted",
+        reason: "Explicit genealogy fixture.",
+        evidence: relationshipEvidence(
+          "Father Relationship Source",
+          "Abu Bakar is explicitly identified as Aisyah's father.",
+        ),
+      } as const
+      const fatherRelationship = await client.callTool({
+        name: "add_person_relationship",
+        arguments: fatherRelationshipInput,
+      })
+
+      expect(fatherRelationship.isError).not.toBe(true)
+      expect(fatherRelationship.structuredContent).toMatchObject({
+        replayed: false,
+        created: true,
+        status: "accepted",
+        relationshipId: expect.any(String),
+        evidenceIds: [expect.any(String)],
+        statusChangeId: expect.any(String),
+      })
+
+      const replayedFatherRelationship = await client.callTool({
+        name: "add_person_relationship",
+        arguments: fatherRelationshipInput,
+      })
+
+      expect(replayedFatherRelationship.isError).not.toBe(true)
+      expect(replayedFatherRelationship.structuredContent).toMatchObject({
+        replayed: true,
+        created: true,
+        status: "accepted",
+      })
+
+      const motherRelationship = await client.callTool({
+        name: "add_person_relationship",
+        arguments: {
+          operationKey: `integration-mother-${testId}`,
+          fromPersonId: ummuRumanId,
+          toPersonId: aisyahId,
+          type: "biological_parent_of",
+          status: "accepted",
+          reason: "Explicit genealogy fixture.",
+          evidence: relationshipEvidence(
+            "Mother Relationship Source",
+            "Ummu Ruman is explicitly identified as Aisyah's mother.",
+          ),
+        },
+      })
+
+      expect(motherRelationship.isError).not.toBe(true)
+
+      const marriageRelationship = await client.callTool({
+        name: "add_person_relationship",
+        arguments: {
+          operationKey: `integration-husband-${testId}`,
+          fromPersonId: entityId,
+          toPersonId: ummuRumanId,
+          type: "husband_of",
+          status: "accepted",
+          reason: "Explicit marriage fixture.",
+          evidence: relationshipEvidence(
+            "Marriage Relationship Source",
+            "Abu Bakar is explicitly identified as Ummu Ruman's husband.",
+          ),
+        },
+      })
+
+      expect(marriageRelationship.isError).not.toBe(true)
+
+      const invalidMarriageDirection = await client.callTool({
+        name: "add_person_relationship",
+        arguments: {
+          operationKey: `integration-invalid-husband-${testId}`,
+          fromPersonId: ummuRumanId,
+          toPersonId: entityId,
+          type: "husband_of",
+          status: "accepted",
+          reason: "Invalid direction fixture.",
+          evidence: relationshipEvidence(
+            "Invalid Marriage Source",
+            "This fixture intentionally uses the wrong direction.",
+          ),
+        },
+      })
+
+      expect(invalidMarriageDirection.isError).toBe(true)
 
       const searched = await client.callTool({
         name: "search_people",
@@ -302,6 +480,7 @@ integrationTest(
         fetched.structuredContent as {
           person: {
             status: string
+            gender: string
             keywords: string[]
             names: Array<{
               type: string
@@ -313,6 +492,7 @@ integrationTest(
       ).person
 
       expect(fetchedPerson.status).toBe("active")
+      expect(fetchedPerson.gender).toBe("male")
       expect(fetchedPerson.names).toEqual([
         expect.objectContaining({
           type: "personal",
@@ -335,6 +515,68 @@ integrationTest(
       expect(fetchedPerson.keywords).toContain("Abd Allah")
       expect(fetchedPerson.keywords).toContain("Ibnu Abi Quhafah")
       expect(fetchedPerson.keywords).toContain(uniqueSearchTerm)
+
+      const aisyahRelationshipsResult = await client.callTool({
+        name: "get_person_relationships",
+        arguments: { entityId: aisyahId },
+      })
+
+      expect(aisyahRelationshipsResult.isError).not.toBe(true)
+      const aisyahRelationships = (
+        aisyahRelationshipsResult.structuredContent as {
+          relationships: Array<{
+            type: string
+            direction: string
+            label: string
+            relatedPerson: { entityId: string }
+            evidence: unknown[]
+            statusHistory: unknown[]
+          }>
+        }
+      ).relationships
+
+      expect(
+        aisyahRelationships.map(
+          ({ type, direction, label, relatedPerson }) => ({
+            type,
+            direction,
+            label,
+            relatedPersonId: relatedPerson.entityId,
+          }),
+        ),
+      ).toEqual([
+        {
+          type: "biological_parent_of",
+          direction: "incoming",
+          label: "father",
+          relatedPersonId: entityId,
+        },
+        {
+          type: "biological_parent_of",
+          direction: "incoming",
+          label: "mother",
+          relatedPersonId: ummuRumanId,
+        },
+      ])
+      expect(aisyahRelationships[0]?.evidence).toHaveLength(1)
+      expect(aisyahRelationships[0]?.statusHistory).toHaveLength(1)
+
+      const abuBakarRelationshipsResult = await client.callTool({
+        name: "get_person_relationships",
+        arguments: { entityId },
+      })
+
+      expect(abuBakarRelationshipsResult.isError).not.toBe(true)
+      expect(
+        (
+          abuBakarRelationshipsResult.structuredContent as {
+            relationships: Array<{ type: string; label: string }>
+          }
+        ).relationships.map(({ type, label }) => ({ type, label })),
+      ).toEqual([
+        { type: "biological_parent_of", label: "daughter" },
+        { type: "husband_of", label: "wife" },
+      ])
 
       const evidenceResult = await client.callTool({
         name: "get_person_evidence",
