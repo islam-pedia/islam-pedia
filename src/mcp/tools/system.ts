@@ -1,4 +1,4 @@
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp"
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
 import { sql } from "drizzle-orm"
 import { z } from "zod"
 import { getDatabase } from "@/db/client"

@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test"
-import { Client } from "@modelcontextprotocol/sdk/client"
+import { Client } from "@modelcontextprotocol/sdk/client/index.js"
 import {
   getDefaultEnvironment,
   StdioClientTransport,
