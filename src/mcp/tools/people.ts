@@ -1,17 +1,47 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
 import { z } from "zod"
 import {
+  activatePerson,
   addPersonKeywords,
   getPerson,
+  getPersonEvidence,
   IdempotencyConflictError,
   importPeople,
   PeopleInputError,
   searchPeople,
 } from "@/application/people"
+import { hadithGrades, sourceCategories } from "@/domain/evidence/source-policy"
 
 const sourceInputSchema = z.object({
   label: z.string().trim().min(1).max(500).optional(),
   uri: z.string().trim().min(1).max(2_000).optional(),
+})
+
+const evidenceLocatorSchema = z.object({
+  volume: z.string().trim().min(1).max(100).optional(),
+  page: z.string().trim().min(1).max(100).optional(),
+  chapter: z.string().trim().min(1).max(500).optional(),
+  verse: z.string().trim().min(1).max(100).optional(),
+  hadithNumber: z.string().trim().min(1).max(100).optional(),
+  section: z.string().trim().min(1).max(500).optional(),
+  url: z.string().trim().min(1).max(2_000).optional(),
+})
+
+const evidenceSourceSchema = z.object({
+  category: z.enum(sourceCategories),
+  label: z.string().trim().min(1).max(500),
+  uri: z.string().trim().min(1).max(2_000).optional(),
+  author: z.string().trim().min(1).max(500).optional(),
+  workTitle: z.string().trim().min(1).max(500).optional(),
+  edition: z.string().trim().min(1).max(500).optional(),
+  methodologyBasis: z.string().trim().min(1).max(5_000),
+  verification: z
+    .object({
+      hadithGrade: z.enum(hadithGrades).optional(),
+      gradedBy: z.string().trim().min(1).max(500).optional(),
+      notes: z.string().trim().min(1).max(5_000).optional(),
+    })
+    .optional(),
 })
 
 const personOutputSchema = z.object({
@@ -26,6 +56,62 @@ const personOutputSchema = z.object({
 
 const importedPersonOutputSchema = personOutputSchema.extend({
   duplicateCandidateIds: z.array(z.uuid()),
+})
+
+const activatePersonOutputSchema = z.object({
+  runId: z.uuid(),
+  replayed: z.boolean(),
+  entityId: z.uuid(),
+  status: z.literal("active"),
+  evidenceIds: z.array(z.uuid()),
+  statusChangeId: z.uuid(),
+})
+
+const personEvidenceOutputSchema = z.object({
+  entityId: z.uuid(),
+  evidence: z.array(
+    z.object({
+      evidenceId: z.uuid(),
+      assertion: z.string(),
+      interpretation: z.enum(["explicit", "inferred"]),
+      status: z.enum(["accepted", "uncertain", "disputed", "retracted"]),
+      notes: z.string().nullable(),
+      source: z.object({
+        sourceId: z.uuid(),
+        category: z.enum(sourceCategories),
+        label: z.string(),
+        uri: z.string().nullable(),
+        author: z.string().nullable(),
+        workTitle: z.string().nullable(),
+        edition: z.string().nullable(),
+        methodology: z.enum(["salafiyyun", "context_only"]),
+        methodologyBasis: z.string(),
+        policyVersion: z.string(),
+        verification: z.object({
+          hadithGrade: z.enum(hadithGrades).optional(),
+          gradedBy: z.string().optional(),
+          notes: z.string().optional(),
+        }),
+      }),
+      passage: z.object({
+        passageId: z.uuid(),
+        text: z.string(),
+        language: z.string().nullable(),
+        locator: evidenceLocatorSchema,
+      }),
+      createdAt: z.string(),
+    }),
+  ),
+  statusHistory: z.array(
+    z.object({
+      statusChangeId: z.uuid(),
+      fromStatus: z.enum(["provisional", "active", "merged"]).nullable(),
+      toStatus: z.enum(["provisional", "active", "merged"]),
+      reason: z.string(),
+      runId: z.uuid(),
+      createdAt: z.string(),
+    }),
+  ),
 })
 
 function toolError(error: unknown): {
@@ -234,6 +320,96 @@ export function registerPeopleTools(server: McpServer): void {
           replayed: result.replayed,
           entityId: result.entityId,
           addedKeywords: result.addedKeywords,
+        }
+
+        return {
+          content: [{ type: "text", text: JSON.stringify(output) }],
+          structuredContent: output,
+        }
+      } catch (error) {
+        return toolError(error)
+      }
+    },
+  )
+
+  server.registerTool(
+    "activate_person",
+    {
+      title: "Activate person",
+      description:
+        "Verify a provisional person under source policy salafiyyun-v1, record the evidence and status history, and mark the person active. Requires one explicit Quran/authentic-hadith passage or two independent qualifying secondary sources.",
+      inputSchema: z.object({
+        operationKey: z.string().trim().min(1).max(300),
+        entityId: z.uuid(),
+        reason: z.string().trim().min(1).max(5_000),
+        instruction: z.string().trim().min(1).max(5_000).optional(),
+        evidence: z
+          .array(
+            z.object({
+              source: evidenceSourceSchema,
+              passage: z.string().trim().min(1).max(20_000),
+              language: z.string().trim().min(1).max(100).optional(),
+              locator: evidenceLocatorSchema.optional(),
+              assertion: z.string().trim().min(1).max(5_000),
+              interpretation: z.enum(["explicit", "inferred"]),
+              notes: z.string().trim().min(1).max(5_000).optional(),
+            }),
+          )
+          .min(1)
+          .max(20),
+      }),
+      outputSchema: activatePersonOutputSchema,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async (input) => {
+      try {
+        const output = await activatePerson(input)
+
+        return {
+          content: [{ type: "text", text: JSON.stringify(output) }],
+          structuredContent: output,
+        }
+      } catch (error) {
+        return toolError(error)
+      }
+    },
+  )
+
+  server.registerTool(
+    "get_person_evidence",
+    {
+      title: "Get person evidence",
+      description:
+        "Get accepted, uncertain, disputed, or retracted evidence and the complete status history for one person.",
+      inputSchema: z.object({
+        entityId: z.uuid(),
+      }),
+      outputSchema: personEvidenceOutputSchema,
+      annotations: {
+        readOnlyHint: true,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async ({ entityId }) => {
+      try {
+        const output = await getPersonEvidence(entityId)
+
+        if (!output) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: `Person "${entityId}" was not found.`,
+              },
+            ],
+            isError: true,
+          }
         }
 
         return {

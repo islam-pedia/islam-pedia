@@ -1,6 +1,12 @@
 import { eq, inArray, or } from "drizzle-orm"
 import { getDatabase } from "@/db/client"
-import { entities, entitySearchTerms, ingestionRuns, people } from "@/db/schema"
+import {
+  entities,
+  entitySearchTerms,
+  entityStatusChanges,
+  ingestionRuns,
+  people,
+} from "@/db/schema"
 import {
   cleanDisplayText,
   SEARCH_NORMALIZATION_VERSION,
@@ -133,6 +139,14 @@ export async function importPeople(
       if (!entity) {
         throw new Error("Failed to create person entity.")
       }
+
+      await transaction.insert(entityStatusChanges).values({
+        entityId: entity.id,
+        fromStatus: null,
+        toStatus: "provisional",
+        reason: "Entity created pending identity verification.",
+        createdByRunId: run.id,
+      })
 
       await transaction.insert(people).values({
         entityId: entity.id,

@@ -105,6 +105,31 @@ entities and their relationships can be explored easily.
 - Confidence scores are supplementary metadata; they do not replace citations
   or source evidence.
 
+## Source and Methodology Policy
+
+- All accepted conclusions and canonical editorial decisions must follow the
+  Salafiyyun methodology. The enforced policy version is `salafiyyun-v1`.
+- Use the Quran as primary evidence with an exact surah and verse, understood
+  through the tafsir and explanations transmitted from the Salaf.
+- Use hadith as primary evidence only when the collection and hadith number are
+  recorded and an explicit `sahih` or `hasan` grading with the grader is stored.
+- Reports from the Sahabah, Tabi'in, and Tabi' al-Tabi'in, and explanations by
+  Ahl al-Sunnah scholars following the Salaf, may support conclusions when the
+  author, work, exact locator, extracted passage, and methodology basis are
+  recorded.
+- The label "Salafi" or "Salafiyyun" alone is never evidence. Every assertion
+  still requires an exact citation and an extracted passage.
+- A person may become `active` from one explicit qualifying Quran/authentic
+  hadith passage, or from at least two independent qualifying secondary sources.
+- Sources outside this methodology may be retained as `context_only` to
+  document another view, but they cannot activate an entity or establish an
+  accepted canonical conclusion.
+- Preserve disagreements among Salafiyyun scholars and contrary reports. Attach
+  each view to its evidence and use `uncertain`, `disputed`, or `retracted`
+  instead of deleting inconvenient history.
+- AI inference, search snippets, unsourced websites, social media, blogs, and
+  Wikipedia are discovery aids only; they are not activation evidence.
+
 ## Technology and Development Conventions
 
 - Use Bun and TypeScript for backend and MCP development.

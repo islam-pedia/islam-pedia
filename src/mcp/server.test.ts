@@ -28,11 +28,14 @@ test("exposes the initial MCP tools", async () => {
   const { tools } = await client.listTools()
 
   expect(tools.map(({ name }) => name).sort()).toEqual([
+    "activate_person",
     "add_person_keywords",
     "get_person",
+    "get_person_evidence",
     "import_people",
     "project_context",
     "search_people",
+    "source_policy",
     "system_health",
   ])
 })
@@ -50,5 +53,23 @@ test("returns structured project context", async () => {
     sourceOfTruth: "PostgreSQL 18",
     orm: "Drizzle ORM RC",
     writePolicy: "owner-directed AI writes with validation and audit",
+    sourceMethodology: "salafiyyun",
+    sourcePolicyVersion: "salafiyyun-v1",
+  })
+})
+
+test("returns the enforced source policy", async () => {
+  const result = await client.callTool({
+    name: "source_policy",
+    arguments: {},
+  })
+
+  expect(result.isError).not.toBe(true)
+  expect(result.structuredContent).toMatchObject({
+    version: "salafiyyun-v1",
+    methodology: "salafiyyun",
+    activationRules: {
+      interpretation: "explicit",
+    },
   })
 })

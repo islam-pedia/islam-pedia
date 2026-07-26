@@ -1,7 +1,16 @@
 import { SQL } from "bun"
 import { sql } from "drizzle-orm"
 import { drizzle } from "drizzle-orm/bun-sql"
-import { entities, entitySearchTerms, ingestionRuns, people } from "@/db/schema"
+import {
+  entities,
+  entityEvidence,
+  entitySearchTerms,
+  entityStatusChanges,
+  ingestionRuns,
+  people,
+  sourcePassages,
+  sources,
+} from "@/db/schema"
 
 interface CurrentDatabaseRow extends Record<string, unknown> {
   databaseName: string
@@ -32,6 +41,10 @@ export async function resetTestDatabase(databaseUrl: string): Promise<void> {
 
     await database.execute(sql`
       TRUNCATE TABLE
+        ${entityEvidence},
+        ${entityStatusChanges},
+        ${sourcePassages},
+        ${sources},
         ${entitySearchTerms},
         ${people},
         ${entities},

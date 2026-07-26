@@ -12,11 +12,21 @@ import type {
   PreparedPerson,
 } from "./types"
 
-export function requireCleanText(value: string, field: string): string {
+export function requireCleanText(
+  value: string,
+  field: string,
+  maxLength?: number,
+): string {
   const cleaned = cleanDisplayText(value)
 
   if (!cleaned) {
     throw new PeopleInputError(`${field} must not be blank.`)
+  }
+
+  if (maxLength !== undefined && cleaned.length > maxLength) {
+    throw new PeopleInputError(
+      `${field} must contain at most ${maxLength} characters.`,
+    )
   }
 
   return cleaned

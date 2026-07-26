@@ -104,6 +104,92 @@ integrationTest(
         (added.structuredContent as { addedKeywords: string[] }).addedKeywords,
       ).toEqual(["Al-Faruq", "Farooq"])
 
+      const activationInput = {
+        operationKey: `integration-activate-${testId}`,
+        entityId,
+        reason: "Identity confirmed by an explicit test source passage.",
+        instruction: "Integration test activation",
+        evidence: [
+          {
+            source: {
+              category: "salafiyyun_scholar",
+              label: "Integration Test Source One",
+              uri: "https://example.test/source-one",
+              author: "Test Author One",
+              workTitle: "Test Work One",
+              edition: "Test Edition",
+              methodologyBasis:
+                "Synthetic fixture representing a Salafiyyun source.",
+            },
+            passage: "This first passage explicitly names the test person.",
+            language: "en",
+            locator: {
+              volume: "1",
+              page: "10",
+              chapter: "Identity",
+              section: "Test fixture",
+              url: "https://example.test/source-one#identity",
+            },
+            assertion: "The source explicitly identifies this person.",
+            interpretation: "explicit",
+            notes: "Synthetic evidence used only by the integration test.",
+          },
+          {
+            source: {
+              category: "salaf_report",
+              label: "Integration Test Source Two",
+              uri: "https://example.test/source-two",
+              author: "Test Author Two",
+              workTitle: "Test Work Two",
+              edition: "Test Edition",
+              methodologyBasis:
+                "Synthetic fixture representing an independently transmitted report from the Salaf.",
+            },
+            passage: "This second passage explicitly names the test person.",
+            language: "en",
+            locator: {
+              volume: "2",
+              page: "20",
+              chapter: "Identity",
+              section: "Independent test fixture",
+              url: "https://example.test/source-two#identity",
+            },
+            assertion:
+              "An independent source explicitly identifies this person.",
+            interpretation: "explicit",
+            notes: "Synthetic evidence used only by the integration test.",
+          },
+        ],
+      } as const
+      const activated = await client.callTool({
+        name: "activate_person",
+        arguments: activationInput,
+      })
+
+      expect(activated.isError).not.toBe(true)
+      const activationContent = activated.structuredContent as {
+        replayed: boolean
+        status: string
+        evidenceIds: string[]
+        statusChangeId: string
+      }
+
+      expect(activationContent.replayed).toBe(false)
+      expect(activationContent.status).toBe("active")
+      expect(activationContent.evidenceIds).toHaveLength(2)
+      expect(activationContent.statusChangeId).toBeString()
+
+      const replayedActivation = await client.callTool({
+        name: "activate_person",
+        arguments: activationInput,
+      })
+
+      expect(replayedActivation.isError).not.toBe(true)
+      expect(
+        (replayedActivation.structuredContent as { replayed: boolean })
+          .replayed,
+      ).toBe(true)
+
       const fetched = await client.callTool({
         name: "get_person",
         arguments: { entityId },
@@ -116,12 +202,80 @@ integrationTest(
         }
       ).person.keywords
 
+      expect(
+        (
+          fetched.structuredContent as {
+            person: { status: string }
+          }
+        ).person.status,
+      ).toBe("active")
       expect(fetchedKeywords).toContain("Al-Faruq")
       expect(fetchedKeywords).toContain("Farooq")
       expect(fetchedKeywords).toContain("Ibn al-Khattab")
       expect(fetchedKeywords).toContain("Omar")
       expect(fetchedKeywords).toContain("Umar")
       expect(fetchedKeywords).toContain(uniqueSearchTerm)
+
+      const evidenceResult = await client.callTool({
+        name: "get_person_evidence",
+        arguments: { entityId },
+      })
+
+      expect(evidenceResult.isError).not.toBe(true)
+      const evidenceContent = evidenceResult.structuredContent as {
+        evidence: Array<{
+          status: string
+          interpretation: string
+          source: {
+            category: string
+            label: string
+            methodology: string
+            policyVersion: string
+          }
+          passage: { text: string }
+        }>
+        statusHistory: Array<{
+          fromStatus: string | null
+          toStatus: string
+          reason: string
+          statusChangeId: string
+          runId: string
+          createdAt: string
+        }>
+      }
+
+      expect(evidenceContent.evidence).toHaveLength(2)
+      expect(evidenceContent.evidence[0]).toMatchObject({
+        status: "accepted",
+        interpretation: "explicit",
+        source: {
+          category: "salafiyyun_scholar",
+          label: "Integration Test Source One",
+          methodology: "salafiyyun",
+          policyVersion: "salafiyyun-v1",
+        },
+        passage: {
+          text: "This first passage explicitly names the test person.",
+        },
+      })
+      expect(evidenceContent.statusHistory).toEqual([
+        {
+          fromStatus: null,
+          toStatus: "provisional",
+          reason: "Entity created pending identity verification.",
+          statusChangeId: expect.any(String),
+          runId: expect.any(String),
+          createdAt: expect.any(String),
+        },
+        {
+          fromStatus: "provisional",
+          toStatus: "active",
+          reason: "Identity confirmed by an explicit test source passage.",
+          statusChangeId: expect.any(String),
+          runId: expect.any(String),
+          createdAt: expect.any(String),
+        },
+      ])
     } finally {
       try {
         await client.close()

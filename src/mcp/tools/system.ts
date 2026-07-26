@@ -2,6 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
 import { sql } from "drizzle-orm"
 import { z } from "zod"
 import { getDatabase } from "@/db/client"
+import { sourcePolicy } from "@/domain/evidence/source-policy"
 
 const healthOutputSchema = z.object({
   status: z.enum(["ok", "degraded"]),
@@ -15,6 +16,21 @@ const projectContextOutputSchema = z.object({
   sourceOfTruth: z.literal("PostgreSQL 18"),
   orm: z.literal("Drizzle ORM RC"),
   writePolicy: z.literal("owner-directed AI writes with validation and audit"),
+  sourceMethodology: z.literal("salafiyyun"),
+  sourcePolicyVersion: z.literal("salafiyyun-v1"),
+})
+
+const sourcePolicyOutputSchema = z.object({
+  version: z.literal("salafiyyun-v1"),
+  methodology: z.literal("salafiyyun"),
+  principle: z.string(),
+  activationRules: z.object({
+    interpretation: z.literal("explicit"),
+    primaryEvidence: z.string(),
+    secondaryEvidence: z.string(),
+    contextOnly: z.string(),
+  }),
+  conflictPolicy: z.string(),
 })
 
 export function registerSystemTools(server: McpServer): void {
@@ -92,6 +108,43 @@ export function registerSystemTools(server: McpServer): void {
         orm: "Drizzle ORM RC" as const,
         writePolicy:
           "owner-directed AI writes with validation and audit" as const,
+        sourceMethodology: "salafiyyun" as const,
+        sourcePolicyVersion: "salafiyyun-v1" as const,
+      }
+
+      return {
+        content: [{ type: "text", text: JSON.stringify(output) }],
+        structuredContent: output,
+      }
+    },
+  )
+
+  server.registerTool(
+    "source_policy",
+    {
+      title: "Source policy",
+      description:
+        "Return the enforced source and methodology policy for Islam Pedia.",
+      inputSchema: z.object({}),
+      outputSchema: sourcePolicyOutputSchema,
+      annotations: {
+        readOnlyHint: true,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async () => {
+      const output = {
+        version: sourcePolicy.version,
+        methodology: sourcePolicy.methodology,
+        principle: sourcePolicy.principle,
+        activationRules: {
+          interpretation: sourcePolicy.activationRules.interpretation,
+          primaryEvidence: sourcePolicy.activationRules.primaryEvidence,
+          secondaryEvidence: sourcePolicy.activationRules.secondaryEvidence,
+          contextOnly: sourcePolicy.activationRules.contextOnly,
+        },
+        conflictPolicy: sourcePolicy.conflictPolicy,
       }
 
       return {
