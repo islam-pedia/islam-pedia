@@ -4,6 +4,7 @@ import type {
   SourceMethodology,
   SourceVerification,
 } from "@/domain/evidence/source-policy"
+import type { PersonNameType } from "@/domain/people/names"
 
 export type {
   HadithGrade,
@@ -11,6 +12,7 @@ export type {
   SourceMethodology,
   SourceVerification,
 } from "@/domain/evidence/source-policy"
+export type { PersonNameType } from "@/domain/people/names"
 
 export type PersonStatus = "provisional" | "active" | "merged"
 
@@ -22,7 +24,15 @@ export interface IngestionSourceInput {
 export interface PersonInput {
   nameOriginal: string
   nameLatin: string
+  nameType?: PersonNameType
+  names?: PersonNameInput[]
   keywords?: string[]
+}
+
+export interface PersonNameInput {
+  type: PersonNameType
+  nameOriginal: string
+  nameLatin: string
 }
 
 export interface ImportPeopleInput {
@@ -36,6 +46,14 @@ export interface AddPersonKeywordsInput {
   operationKey: string
   entityId: string
   keywords: string[]
+  instruction?: string
+  source?: IngestionSourceInput
+}
+
+export interface AddPersonNamesInput {
+  operationKey: string
+  entityId: string
+  names: PersonNameInput[]
   instruction?: string
   source?: IngestionSourceInput
 }
@@ -93,8 +111,17 @@ export interface PersonView {
   mergedIntoEntityId: string | null
   nameOriginal: string
   nameLatin: string
+  names: PersonNameView[]
   keywords: string[]
   createdAt: string
+}
+
+export interface PersonNameView {
+  id: string
+  type: PersonNameType
+  nameOriginal: string
+  nameLatin: string
+  isPrimary: boolean
 }
 
 export interface ImportedPersonView extends PersonView {
@@ -116,6 +143,13 @@ export interface AddPersonKeywordsResult {
   replayed: boolean
   entityId: string
   addedKeywords: string[]
+}
+
+export interface AddPersonNamesResult extends Record<string, unknown> {
+  runId: string
+  replayed: boolean
+  entityId: string
+  addedNames: PersonNameView[]
 }
 
 export interface ActivatePersonResult extends Record<string, unknown> {
@@ -175,10 +209,20 @@ export interface PreparedPerson {
   nameOriginalNormalized: string
   nameLatin: string
   nameLatinNormalized: string
+  names: PreparedPersonName[]
   keywords: Array<{
     term: string
     normalizedTerm: string
   }>
+}
+
+export interface PreparedPersonName {
+  type: PersonNameType
+  nameOriginal: string
+  nameOriginalNormalized: string
+  nameLatin: string
+  nameLatinNormalized: string
+  isPrimary: boolean
 }
 
 export interface PersonRow {
@@ -187,6 +231,7 @@ export interface PersonRow {
   mergedIntoEntityId: string | null
   nameOriginal: string
   nameLatin: string
+  names: PersonNameView[]
   keywords: string[]
   createdAt: Date
 }

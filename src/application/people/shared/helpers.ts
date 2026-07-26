@@ -1,3 +1,4 @@
+import { personNameTypes } from "@/domain/people/names"
 import {
   cleanDisplayText,
   normalizeSearchText,
@@ -8,8 +9,10 @@ import { IdempotencyConflictError, PeopleInputError } from "./errors"
 import type {
   ImportedPersonView,
   PersonInput,
+  PersonNameInput,
   PersonRow,
   PreparedPerson,
+  PreparedPersonName,
 } from "./types"
 
 export function requireCleanText(
@@ -33,8 +36,53 @@ export function requireCleanText(
 }
 
 export function preparePerson(input: PersonInput): PreparedPerson {
-  const nameOriginal = requireCleanText(input.nameOriginal, "nameOriginal")
-  const nameLatin = requireCleanText(input.nameLatin, "nameLatin")
+  const primaryName = preparePersonName(
+    {
+      type: input.nameType ?? "personal",
+      nameOriginal: input.nameOriginal,
+      nameLatin: input.nameLatin,
+    },
+    true,
+  )
+  const names = deduplicatePreparedNames([
+    primaryName,
+    ...preparePersonNames(input.names ?? []),
+  ])
+  const excludedSearchTerms = new Set(
+    names.flatMap((name) => [
+      name.nameOriginalNormalized,
+      name.nameLatinNormalized,
+    ]),
+  )
+
+  return {
+    nameOriginal: primaryName.nameOriginal,
+    nameOriginalNormalized: primaryName.nameOriginalNormalized,
+    nameLatin: primaryName.nameLatin,
+    nameLatinNormalized: primaryName.nameLatinNormalized,
+    names,
+    keywords: prepareSearchTerms(input.keywords ?? [], excludedSearchTerms),
+  }
+}
+
+export function preparePersonNames(
+  inputs: readonly PersonNameInput[],
+): PreparedPersonName[] {
+  return deduplicatePreparedNames(
+    inputs.map((input) => preparePersonName(input, false)),
+  )
+}
+
+function preparePersonName(
+  input: PersonNameInput,
+  isPrimary: boolean,
+): PreparedPersonName {
+  if (!personNameTypes.includes(input.type)) {
+    throw new PeopleInputError(`Unsupported person name type "${input.type}".`)
+  }
+
+  const nameOriginal = requireCleanText(input.nameOriginal, "nameOriginal", 500)
+  const nameLatin = requireCleanText(input.nameLatin, "nameLatin", 500)
   const nameOriginalNormalized = normalizeSearchText(nameOriginal)
   const nameLatinNormalized = normalizeSearchText(nameLatin)
 
@@ -45,15 +93,33 @@ export function preparePerson(input: PersonInput): PreparedPerson {
   }
 
   return {
+    type: input.type,
     nameOriginal,
     nameOriginalNormalized,
     nameLatin,
     nameLatinNormalized,
-    keywords: prepareSearchTerms(
-      input.keywords ?? [],
-      new Set([nameOriginalNormalized, nameLatinNormalized]),
-    ),
+    isPrimary,
   }
+}
+
+function deduplicatePreparedNames(
+  names: readonly PreparedPersonName[],
+): PreparedPersonName[] {
+  const namesByIdentity = new Map<string, PreparedPersonName>()
+
+  for (const name of names) {
+    const key = [
+      name.type,
+      name.nameOriginalNormalized,
+      name.nameLatinNormalized,
+    ].join("\u0000")
+
+    if (!namesByIdentity.has(key)) {
+      namesByIdentity.set(key, name)
+    }
+  }
+
+  return [...namesByIdentity.values()]
 }
 
 export function hashRequest(value: unknown): string {
@@ -84,6 +150,7 @@ export function toPersonView(
     mergedIntoEntityId: row.mergedIntoEntityId,
     nameOriginal: row.nameOriginal,
     nameLatin: row.nameLatin,
+    names: row.names,
     keywords: row.keywords,
     createdAt: row.createdAt.toISOString(),
     duplicateCandidateIds,

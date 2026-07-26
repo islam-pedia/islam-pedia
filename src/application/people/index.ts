@@ -1,5 +1,6 @@
 export { activatePerson } from "./commands/activate-person"
 export { addPersonKeywords } from "./commands/add-person-keywords"
+export { addPersonNames } from "./commands/add-person-names"
 export { importPeople } from "./commands/import-people"
 export { getPerson } from "./queries/get-person"
 export { getPersonEvidence } from "./queries/get-person-evidence"
@@ -14,6 +15,8 @@ export type {
   ActivatePersonResult,
   AddPersonKeywordsInput,
   AddPersonKeywordsResult,
+  AddPersonNamesInput,
+  AddPersonNamesResult,
   AssertionStatus,
   EvidenceInterpretation,
   EvidenceLocatorInput,
@@ -26,6 +29,9 @@ export type {
   IngestionSourceInput,
   PersonEvidenceView,
   PersonInput,
+  PersonNameInput,
+  PersonNameType,
+  PersonNameView,
   PersonStatus,
   PersonStatusChangeView,
   PersonView,

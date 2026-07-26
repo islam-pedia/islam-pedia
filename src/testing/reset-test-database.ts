@@ -8,6 +8,7 @@ import {
   entityStatusChanges,
   ingestionRuns,
   people,
+  personNames,
   sourcePassages,
   sources,
 } from "@/db/schema"
@@ -46,6 +47,7 @@ export async function resetTestDatabase(databaseUrl: string): Promise<void> {
         ${sourcePassages},
         ${sources},
         ${entitySearchTerms},
+        ${personNames},
         ${people},
         ${entities},
         ${ingestionRuns}

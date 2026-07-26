@@ -44,9 +44,17 @@ integrationTest(
         instruction: "Integration test import",
         people: [
           {
-            nameOriginal: "عُمَر بْن ٱلْخَطَّاب",
-            nameLatin: "Umar ibn al-Khaṭṭāb",
-            keywords: ["Umar", "Omar", "Ibn al-Khattab", uniqueSearchTerm],
+            nameOriginal: "عَبْدُ ٱللَّٰهِ بْنُ أَبِي قُحَافَةَ",
+            nameLatin: "Abdullah ibn Abi Quhafah",
+            nameType: "personal",
+            names: [
+              {
+                type: "kunyah",
+                nameOriginal: "أَبُو بَكْرٍ",
+                nameLatin: "Abu Bakar",
+              },
+            ],
+            keywords: ["Abd Allah", "Ibnu Abi Quhafah", uniqueSearchTerm],
           },
         ],
       }
@@ -90,19 +98,113 @@ integrationTest(
         ).people[0]?.entityId,
       ).toBe(entityId)
 
+      const searchedByKunyah = await client.callTool({
+        name: "search_people",
+        arguments: { query: "Abu Bakar", limit: 10 },
+      })
+
+      expect(searchedByKunyah.isError).not.toBe(true)
+      expect(
+        (
+          searchedByKunyah.structuredContent as {
+            people: Array<{ entityId: string }>
+          }
+        ).people[0]?.entityId,
+      ).toBe(entityId)
+
+      const addedNames = await client.callTool({
+        name: "add_person_names",
+        arguments: {
+          operationKey: `integration-names-${testId}`,
+          entityId,
+          names: [
+            {
+              type: "laqab",
+              nameOriginal: "ٱلصِّدِّيق",
+              nameLatin: "As-Siddiq",
+            },
+          ],
+        },
+      })
+
+      expect(addedNames.isError).not.toBe(true)
+      expect(
+        (
+          addedNames.structuredContent as {
+            addedNames: Array<{ type: string; nameLatin: string }>
+          }
+        ).addedNames,
+      ).toEqual([
+        expect.objectContaining({
+          type: "laqab",
+          nameLatin: "As-Siddiq",
+        }),
+      ])
+
+      const replayedNames = await client.callTool({
+        name: "add_person_names",
+        arguments: {
+          operationKey: `integration-names-${testId}`,
+          entityId,
+          names: [
+            {
+              type: "laqab",
+              nameOriginal: "ٱلصِّدِّيق",
+              nameLatin: "As-Siddiq",
+            },
+          ],
+        },
+      })
+
+      expect(replayedNames.isError).not.toBe(true)
+      expect(
+        (
+          replayedNames.structuredContent as {
+            replayed: boolean
+            addedNames: Array<{ type: string; nameLatin: string }>
+          }
+        ).replayed,
+      ).toBe(true)
+      expect(
+        (
+          replayedNames.structuredContent as {
+            addedNames: Array<{ type: string; nameLatin: string }>
+          }
+        ).addedNames,
+      ).toEqual([
+        expect.objectContaining({
+          type: "laqab",
+          nameLatin: "As-Siddiq",
+        }),
+      ])
+
+      const searchedByLaqab = await client.callTool({
+        name: "search_people",
+        arguments: { query: "As-Siddiq", limit: 10 },
+      })
+
+      expect(searchedByLaqab.isError).not.toBe(true)
+      expect(
+        (
+          searchedByLaqab.structuredContent as {
+            people: Array<{ entityId: string }>
+          }
+        ).people[0]?.entityId,
+      ).toBe(entityId)
+
       const added = await client.callTool({
         name: "add_person_keywords",
         arguments: {
           operationKey: `integration-keywords-${testId}`,
           entityId,
-          keywords: ["Al-Faruq", "Farooq"],
+          keywords: ["Abu Bakr", "Al-Siddiq"],
         },
       })
 
       expect(added.isError).not.toBe(true)
       expect(
         (added.structuredContent as { addedKeywords: string[] }).addedKeywords,
-      ).toEqual(["Al-Faruq", "Farooq"])
+      ).toEqual(["Abu Bakr", "Al-Siddiq"])
 
       const activationInput = {
         operationKey: `integration-activate-${testId}`,
@@ -196,25 +298,43 @@ integrationTest(
       })
 
       expect(fetched.isError).not.toBe(true)
-      const fetchedKeywords = (
+      const fetchedPerson = (
         fetched.structuredContent as {
-          person: { keywords: string[] }
-        }
-      ).person.keywords
-
-      expect(
-        (
-          fetched.structuredContent as {
-            person: { status: string }
+          person: {
+            status: string
+            keywords: string[]
+            names: Array<{
+              type: string
+              nameLatin: string
+              isPrimary: boolean
+            }>
           }
-        ).person.status,
-      ).toBe("active")
-      expect(fetchedKeywords).toContain("Al-Faruq")
-      expect(fetchedKeywords).toContain("Farooq")
-      expect(fetchedKeywords).toContain("Ibn al-Khattab")
-      expect(fetchedKeywords).toContain("Omar")
-      expect(fetchedKeywords).toContain("Umar")
-      expect(fetchedKeywords).toContain(uniqueSearchTerm)
+        }
+      ).person
+
+      expect(fetchedPerson.status).toBe("active")
+      expect(fetchedPerson.names).toEqual([
+        expect.objectContaining({
+          type: "personal",
+          nameLatin: "Abdullah ibn Abi Quhafah",
+          isPrimary: true,
+        }),
+        expect.objectContaining({
+          type: "kunyah",
+          nameLatin: "Abu Bakar",
+          isPrimary: false,
+        }),
+        expect.objectContaining({
+          type: "laqab",
+          nameLatin: "As-Siddiq",
+          isPrimary: false,
+        }),
+      ])
+      expect(fetchedPerson.keywords).toContain("Abu Bakr")
+      expect(fetchedPerson.keywords).toContain("Al-Siddiq")
+      expect(fetchedPerson.keywords).toContain("Abd Allah")
+      expect(fetchedPerson.keywords).toContain("Ibnu Abi Quhafah")
+      expect(fetchedPerson.keywords).toContain(uniqueSearchTerm)
 
       const evidenceResult = await client.callTool({
         name: "get_person_evidence",

@@ -1,6 +1,6 @@
 import { sql } from "drizzle-orm"
 import { getDatabase } from "@/db/client"
-import { entities, entitySearchTerms, people } from "@/db/schema"
+import { entities, entitySearchTerms, people, personNames } from "@/db/schema"
 import { normalizeSearchText } from "@/domain/people/normalization"
 import { PeopleInputError } from "../shared/errors"
 import type { SearchPeopleResult, SearchRow } from "../shared/types"
@@ -38,6 +38,28 @@ export async function searchPeople(
             ELSE similarity(${people.nameLatinNormalized}, ${normalizedQuery})
           END,
           coalesce((
+            SELECT max(greatest(
+              CASE
+                WHEN person_name.name_original_normalized = ${normalizedQuery}
+                  THEN 1.0
+                ELSE similarity(
+                  person_name.name_original_normalized,
+                  ${normalizedQuery}
+                )
+              END,
+              CASE
+                WHEN person_name.name_latin_normalized = ${normalizedQuery}
+                  THEN 1.0
+                ELSE similarity(
+                  person_name.name_latin_normalized,
+                  ${normalizedQuery}
+                )
+              END
+            ))
+            FROM ${personNames} AS person_name
+            WHERE person_name.entity_id = ${entities.id}
+          ), 0),
+          coalesce((
             SELECT max(
               CASE
                 WHEN term.normalized_term = ${normalizedQuery}
@@ -64,6 +86,26 @@ export async function searchPeople(
           OR position(${normalizedQuery} IN ${people.nameLatinNormalized}) > 0
           OR EXISTS (
             SELECT 1
+            FROM ${personNames} AS matching_name
+            WHERE
+              matching_name.entity_id = ${entities.id}
+              AND (
+                matching_name.name_original_normalized = ${normalizedQuery}
+                OR matching_name.name_latin_normalized = ${normalizedQuery}
+                OR matching_name.name_original_normalized % ${normalizedQuery}
+                OR matching_name.name_latin_normalized % ${normalizedQuery}
+                OR position(
+                  ${normalizedQuery}
+                  IN matching_name.name_original_normalized
+                ) > 0
+                OR position(
+                  ${normalizedQuery}
+                  IN matching_name.name_latin_normalized
+                ) > 0
+              )
+          )
+          OR EXISTS (
+            SELECT 1
             FROM ${entitySearchTerms} AS matching_term
             WHERE
               matching_term.entity_id = ${entities.id}
@@ -83,7 +125,24 @@ export async function searchPeople(
         SELECT jsonb_agg(term.term ORDER BY term.weight DESC, term.term)
         FROM ${entitySearchTerms} AS term
         WHERE term.entity_id = ranked."entityId"
-      ), '[]'::jsonb) AS "keywords"
+      ), '[]'::jsonb) AS "keywords",
+      coalesce((
+        SELECT jsonb_agg(
+          jsonb_build_object(
+            'id', person_name.id,
+            'type', person_name.type,
+            'nameOriginal', person_name.name_original,
+            'nameLatin', person_name.name_latin,
+            'isPrimary', person_name.is_primary
+          )
+          ORDER BY
+            person_name.is_primary DESC,
+            person_name.type,
+            person_name.name_latin
+        )
+        FROM ${personNames} AS person_name
+        WHERE person_name.entity_id = ranked."entityId"
+      ), '[]'::jsonb) AS "names"
     FROM ranked
     ORDER BY ranked."score" DESC, ranked."nameLatin", ranked."entityId"
     LIMIT ${limit}
@@ -95,6 +154,7 @@ export async function searchPeople(
     mergedIntoEntityId: row.mergedIntoEntityId,
     nameOriginal: row.nameOriginal,
     nameLatin: row.nameLatin,
+    names: row.names,
     keywords: row.keywords,
     createdAt: row.createdAt.toISOString(),
     score: row.score,

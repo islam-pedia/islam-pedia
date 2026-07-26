@@ -30,6 +30,7 @@ test("exposes the initial MCP tools", async () => {
   expect(tools.map(({ name }) => name).sort()).toEqual([
     "activate_person",
     "add_person_keywords",
+    "add_person_names",
     "get_person",
     "get_person_evidence",
     "import_people",

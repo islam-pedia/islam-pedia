@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm"
 import type { AnyPgColumn } from "drizzle-orm/pg-core"
 import {
+  boolean,
   check,
   index,
   jsonb,
@@ -17,6 +18,7 @@ import {
   sourceCategories,
   sourceMethodologies,
 } from "@/domain/evidence/source-policy"
+import { personNameTypes } from "@/domain/people/names"
 
 const uuidV7 = sql`uuidv7()`
 const emptyJson = sql`'{}'::jsonb`
@@ -28,6 +30,8 @@ export const entityStatus = pgEnum("entity_status", [
   "active",
   "merged",
 ])
+
+export const personNameType = pgEnum("person_name_type", personNameTypes)
 
 export const evidenceInterpretation = pgEnum("evidence_interpretation", [
   "explicit",
@@ -162,6 +166,72 @@ export const people = pgTable(
     ),
     check(
       "people_normalization_version_positive",
+      sql`${table.normalizationVersion} > 0`,
+    ),
+  ],
+)
+
+export const personNames = pgTable(
+  "person_names",
+  {
+    id: uuid("id").default(uuidV7).primaryKey(),
+    entityId: uuid("entity_id")
+      .notNull()
+      .references(() => people.entityId, { onDelete: "cascade" }),
+    type: personNameType("type").notNull(),
+    nameOriginal: text("name_original").notNull(),
+    nameOriginalNormalized: text("name_original_normalized").notNull(),
+    nameLatin: text("name_latin").notNull(),
+    nameLatinNormalized: text("name_latin_normalized").notNull(),
+    isPrimary: boolean("is_primary").default(false).notNull(),
+    normalizationVersion: smallint("normalization_version")
+      .default(1)
+      .notNull(),
+    createdByRunId: uuid("created_by_run_id")
+      .notNull()
+      .references(() => ingestionRuns.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", {
+      withTimezone: true,
+      mode: "date",
+    })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("person_names_entity_type_names_uidx").on(
+      table.entityId,
+      table.type,
+      table.nameOriginalNormalized,
+      table.nameLatinNormalized,
+    ),
+    uniqueIndex("person_names_entity_primary_uidx")
+      .on(table.entityId)
+      .where(sql`${table.isPrimary}`),
+    index("person_names_entity_type_idx").on(table.entityId, table.type),
+    index("person_names_created_by_run_idx").on(table.createdByRunId),
+    index("person_names_original_trgm_idx").using(
+      "gin",
+      table.nameOriginalNormalized.op("gin_trgm_ops"),
+    ),
+    index("person_names_latin_trgm_idx").using(
+      "gin",
+      table.nameLatinNormalized.op("gin_trgm_ops"),
+    ),
+    check(
+      "person_names_original_not_blank",
+      sql`btrim(${table.nameOriginal}) <> ''`,
+    ),
+    check(
+      "person_names_original_normalized_not_blank",
+      sql`btrim(${table.nameOriginalNormalized}) <> ''`,
+    ),
+    check("person_names_latin_not_blank", sql`btrim(${table.nameLatin}) <> ''`),
+    check(
+      "person_names_latin_normalized_not_blank",
+      sql`btrim(${table.nameLatinNormalized}) <> ''`,
+    ),
+    check(
+      "person_names_normalization_version_positive",
       sql`${table.normalizationVersion} > 0`,
     ),
   ],
@@ -423,6 +493,7 @@ export const entityStatusChanges = pgTable(
 
 export type Entity = typeof entities.$inferSelect
 export type Person = typeof people.$inferSelect
+export type PersonName = typeof personNames.$inferSelect
 export type EntitySearchTerm = typeof entitySearchTerms.$inferSelect
 export type Source = typeof sources.$inferSelect
 export type SourcePassage = typeof sourcePassages.$inferSelect

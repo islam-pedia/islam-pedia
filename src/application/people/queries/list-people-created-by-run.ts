@@ -1,8 +1,8 @@
-import { eq, inArray } from "drizzle-orm"
+import { desc, eq, inArray } from "drizzle-orm"
 import { getDatabase } from "@/db/client"
-import { entities, entitySearchTerms, people } from "@/db/schema"
+import { entities, entitySearchTerms, people, personNames } from "@/db/schema"
 import { toPersonView } from "../shared/helpers"
-import type { ImportedPersonView } from "../shared/types"
+import type { ImportedPersonView, PersonNameView } from "../shared/types"
 
 export async function listPeopleCreatedByRun(
   runId: string,
@@ -26,21 +26,42 @@ export async function listPeopleCreatedByRun(
     return []
   }
 
+  const entityIds = rows.map(({ entityId }) => entityId)
+  const nameRows = await database
+    .select({
+      id: personNames.id,
+      entityId: personNames.entityId,
+      type: personNames.type,
+      nameOriginal: personNames.nameOriginal,
+      nameLatin: personNames.nameLatin,
+      isPrimary: personNames.isPrimary,
+    })
+    .from(personNames)
+    .where(inArray(personNames.entityId, entityIds))
+    .orderBy(
+      personNames.entityId,
+      desc(personNames.isPrimary),
+      personNames.type,
+      personNames.nameLatin,
+    )
+
   const keywordRows = await database
     .select({
       entityId: entitySearchTerms.entityId,
       term: entitySearchTerms.term,
     })
     .from(entitySearchTerms)
-    .where(
-      inArray(
-        entitySearchTerms.entityId,
-        rows.map(({ entityId }) => entityId),
-      ),
-    )
+    .where(inArray(entitySearchTerms.entityId, entityIds))
     .orderBy(entitySearchTerms.weight, entitySearchTerms.term)
 
   const keywordsByEntity = new Map<string, string[]>()
+  const namesByEntity = new Map<string, PersonNameView[]>()
+
+  for (const { entityId, ...name } of nameRows) {
+    const names = namesByEntity.get(entityId) ?? []
+    names.push(name)
+    namesByEntity.set(entityId, names)
+  }
 
   for (const keyword of keywordRows) {
     const keywords = keywordsByEntity.get(keyword.entityId) ?? []
@@ -51,6 +72,7 @@ export async function listPeopleCreatedByRun(
   return rows.map((row) =>
     toPersonView({
       ...row,
+      names: namesByEntity.get(row.entityId) ?? [],
       keywords: keywordsByEntity.get(row.entityId) ?? [],
     }),
   )

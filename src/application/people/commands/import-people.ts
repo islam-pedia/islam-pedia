@@ -6,6 +6,7 @@ import {
   entityStatusChanges,
   ingestionRuns,
   people,
+  personNames,
 } from "@/db/schema"
 import {
   cleanDisplayText,
@@ -50,6 +51,17 @@ export async function importPeople(
     sourceUri,
     people: preparedPeople.map((person) => ({
       ...person,
+      names: [...person.names].sort((left, right) =>
+        [left.type, left.nameOriginalNormalized, left.nameLatinNormalized]
+          .join("\u0000")
+          .localeCompare(
+            [
+              right.type,
+              right.nameOriginalNormalized,
+              right.nameLatinNormalized,
+            ].join("\u0000"),
+          ),
+      ),
       keywords: [...person.keywords].sort((left, right) =>
         left.normalizedTerm.localeCompare(right.normalizedTerm),
       ),
@@ -101,14 +113,17 @@ export async function importPeople(
 
     for (const person of preparedPeople) {
       const candidateTerms = [
-        person.nameOriginalNormalized,
-        person.nameLatinNormalized,
+        ...person.names.flatMap((name) => [
+          name.nameOriginalNormalized,
+          name.nameLatinNormalized,
+        ]),
         ...person.keywords.map(({ normalizedTerm }) => normalizedTerm),
       ]
 
       const candidateRows = await transaction
         .selectDistinct({ entityId: people.entityId })
         .from(people)
+        .leftJoin(personNames, eq(personNames.entityId, people.entityId))
         .leftJoin(
           entitySearchTerms,
           eq(entitySearchTerms.entityId, people.entityId),
@@ -117,6 +132,8 @@ export async function importPeople(
           or(
             eq(people.nameOriginalNormalized, person.nameOriginalNormalized),
             eq(people.nameLatinNormalized, person.nameLatinNormalized),
+            inArray(personNames.nameOriginalNormalized, candidateTerms),
+            inArray(personNames.nameLatinNormalized, candidateTerms),
             inArray(entitySearchTerms.normalizedTerm, candidateTerms),
           ),
         )
@@ -157,6 +174,29 @@ export async function importPeople(
         normalizationVersion: SEARCH_NORMALIZATION_VERSION,
       })
 
+      const insertedNames = await transaction
+        .insert(personNames)
+        .values(
+          person.names.map((name) => ({
+            entityId: entity.id,
+            type: name.type,
+            nameOriginal: name.nameOriginal,
+            nameOriginalNormalized: name.nameOriginalNormalized,
+            nameLatin: name.nameLatin,
+            nameLatinNormalized: name.nameLatinNormalized,
+            isPrimary: name.isPrimary,
+            normalizationVersion: SEARCH_NORMALIZATION_VERSION,
+            createdByRunId: run.id,
+          })),
+        )
+        .returning({
+          id: personNames.id,
+          type: personNames.type,
+          nameOriginal: personNames.nameOriginal,
+          nameLatin: personNames.nameLatin,
+          isPrimary: personNames.isPrimary,
+        })
+
       if (person.keywords.length > 0) {
         await transaction.insert(entitySearchTerms).values(
           person.keywords.map((keyword) => ({
@@ -177,6 +217,7 @@ export async function importPeople(
             mergedIntoEntityId: entity.mergedIntoEntityId,
             nameOriginal: person.nameOriginal,
             nameLatin: person.nameLatin,
+            names: insertedNames,
             keywords: person.keywords.map(({ term }) => term),
             createdAt: entity.createdAt,
           },

@@ -3,6 +3,7 @@ import { z } from "zod"
 import {
   activatePerson,
   addPersonKeywords,
+  addPersonNames,
   getPerson,
   getPersonEvidence,
   IdempotencyConflictError,
@@ -11,10 +12,24 @@ import {
   searchPeople,
 } from "@/application/people"
 import { hadithGrades, sourceCategories } from "@/domain/evidence/source-policy"
+import { personNameTypes } from "@/domain/people/names"
 
 const sourceInputSchema = z.object({
   label: z.string().trim().min(1).max(500).optional(),
   uri: z.string().trim().min(1).max(2_000).optional(),
+})
+
+const personNameTypeSchema = z.enum(personNameTypes)
+
+const personNameInputSchema = z.object({
+  type: personNameTypeSchema,
+  nameOriginal: z.string().trim().min(1).max(500),
+  nameLatin: z.string().trim().min(1).max(500),
+})
+
+const personNameOutputSchema = personNameInputSchema.extend({
+  id: z.uuid(),
+  isPrimary: z.boolean(),
 })
 
 const evidenceLocatorSchema = z.object({
@@ -50,6 +65,7 @@ const personOutputSchema = z.object({
   mergedIntoEntityId: z.uuid().nullable(),
   nameOriginal: z.string(),
   nameLatin: z.string(),
+  names: z.array(personNameOutputSchema),
   keywords: z.array(z.string()),
   createdAt: z.string(),
 })
@@ -147,7 +163,7 @@ export function registerPeopleTools(server: McpServer): void {
     {
       title: "Import people",
       description:
-        "Import one or more people with original names, Latin names, and search-only keywords. Similar names are reported as candidates and are never merged automatically.",
+        "Import people with a primary classified name, optional additional names such as kunyah or laqab, and search-only keywords. Similar names are reported as candidates and are never merged automatically.",
       inputSchema: z.object({
         batchKey: z.string().trim().min(1).max(300),
         instruction: z.string().trim().min(1).max(5_000).optional(),
@@ -157,6 +173,8 @@ export function registerPeopleTools(server: McpServer): void {
             z.object({
               nameOriginal: z.string().trim().min(1).max(500),
               nameLatin: z.string().trim().min(1).max(500),
+              nameType: personNameTypeSchema.default("personal"),
+              names: z.array(personNameInputSchema).max(100).default([]),
               keywords: z
                 .array(z.string().trim().min(1).max(500))
                 .max(100)
@@ -202,7 +220,7 @@ export function registerPeopleTools(server: McpServer): void {
     {
       title: "Search people",
       description:
-        "Search people by original name, Latin name, transliteration, spelling variant, or search keyword.",
+        "Search people by primary name, kunyah, laqab, nisbah, nasab, alias, transliteration, spelling variant, or search keyword.",
       inputSchema: z.object({
         query: z.string().trim().min(1).max(500),
         limit: z.number().int().min(1).max(100).default(20),
@@ -245,7 +263,8 @@ export function registerPeopleTools(server: McpServer): void {
     "get_person",
     {
       title: "Get person",
-      description: "Get one person and all search keywords by entity ID.",
+      description:
+        "Get one person with all structured names and search keywords by entity ID.",
       inputSchema: z.object({
         entityId: z.uuid(),
       }),
@@ -275,6 +294,46 @@ export function registerPeopleTools(server: McpServer): void {
         }
 
         const output = { person }
+
+        return {
+          content: [{ type: "text", text: JSON.stringify(output) }],
+          structuredContent: output,
+        }
+      } catch (error) {
+        return toolError(error)
+      }
+    },
+  )
+
+  server.registerTool(
+    "add_person_names",
+    {
+      title: "Add person names",
+      description:
+        "Add structured names such as a personal name, kunyah, laqab, nisbah, nasab, or alias to an existing person.",
+      inputSchema: z.object({
+        operationKey: z.string().trim().min(1).max(300),
+        entityId: z.uuid(),
+        names: z.array(personNameInputSchema).min(1).max(100),
+        instruction: z.string().trim().min(1).max(5_000).optional(),
+        source: sourceInputSchema.optional(),
+      }),
+      outputSchema: z.object({
+        runId: z.uuid(),
+        replayed: z.boolean(),
+        entityId: z.uuid(),
+        addedNames: z.array(personNameOutputSchema),
+      }),
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async (input) => {
+      try {
+        const output = await addPersonNames(input)
 
         return {
           content: [{ type: "text", text: JSON.stringify(output) }],

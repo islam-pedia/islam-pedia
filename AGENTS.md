@@ -61,11 +61,15 @@ entities and their relationships can be explored easily.
   entity identity instead of replacing it.
 - `people.name_original` preserves the original-script display name and
   `people.name_latin` preserves the selected canonical Latin rendering.
+- `person_names` stores classified forms of a person's name. Use `personal` for
+  the personal name (ism), `kunyah` for forms such as Abu/Umm, and the explicit
+  `laqab`, `nisbah`, `nasab`, or `alias` types for their respective meanings.
+  The row marked `is_primary` must match the display name stored on `people`.
 - Normalized columns are derived search data. Never overwrite display names
   with their normalized forms.
 - `entity_search_terms` contains search-only keywords and spelling variants.
-  Keywords are rebuildable search aids, not historical facts, tags, titles, or
-  relationship data.
+  Keywords are rebuildable search aids, not structured names, kunyah, historical
+  facts, tags, titles, or relationship data.
 - Never auto-merge people based only on matching or similar names. Report
   duplicate candidates and preserve distinct provisional entities until stronger
   identity evidence exists.

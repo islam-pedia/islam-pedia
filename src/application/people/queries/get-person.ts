@@ -1,6 +1,6 @@
-import { and, eq } from "drizzle-orm"
+import { and, desc, eq } from "drizzle-orm"
 import { getDatabase } from "@/db/client"
-import { entities, entitySearchTerms, people } from "@/db/schema"
+import { entities, entitySearchTerms, people, personNames } from "@/db/schema"
 import type { PersonView } from "../shared/types"
 
 export async function getPerson(entityId: string): Promise<PersonView | null> {
@@ -23,6 +23,22 @@ export async function getPerson(entityId: string): Promise<PersonView | null> {
     return null
   }
 
+  const names = await database
+    .select({
+      id: personNames.id,
+      type: personNames.type,
+      nameOriginal: personNames.nameOriginal,
+      nameLatin: personNames.nameLatin,
+      isPrimary: personNames.isPrimary,
+    })
+    .from(personNames)
+    .where(eq(personNames.entityId, entityId))
+    .orderBy(
+      desc(personNames.isPrimary),
+      personNames.type,
+      personNames.nameLatin,
+    )
+
   const keywords = await database
     .select({ term: entitySearchTerms.term })
     .from(entitySearchTerms)
@@ -31,6 +47,7 @@ export async function getPerson(entityId: string): Promise<PersonView | null> {
 
   return {
     ...row,
+    names,
     keywords: keywords.map(({ term }) => term),
     createdAt: row.createdAt.toISOString(),
   }
