@@ -47,12 +47,17 @@ integrationTest(
             nameOriginal: "عَبْدُ ٱللَّٰهِ بْنُ أَبِي قُحَافَةَ",
             nameLatin: "Abdullah ibn Abi Quhafah",
             gender: "male",
-            nameType: "personal",
+            nameType: "nasab",
             names: [
               {
                 type: "kunyah",
                 nameOriginal: "أَبُو بَكْرٍ",
                 nameLatin: "Abu Bakar",
+              },
+              {
+                type: "nasab",
+                nameOriginal: "عَبْدُ ٱللَّٰهِ بْنُ عُثْمَانَ",
+                nameLatin: "Abdullah ibn Uthman",
               },
             ],
             keywords: ["Abd Allah", "Ibnu Abi Quhafah", uniqueSearchTerm],
@@ -356,6 +361,98 @@ integrationTest(
         }),
       ])
 
+      const primaryNameInput = {
+        operationKey: `integration-primary-name-${testId}`,
+        entityId,
+        name: {
+          type: "nasab",
+          nameOriginal: "عَبْدُ ٱللَّٰهِ بْنُ عُثْمَانَ",
+          nameLatin: "Abdullah ibn Uthman",
+        },
+        reason: "Use the existing ism-based nasab as the display name.",
+      } as const
+      const primaryNameResult = await client.callTool({
+        name: "set_person_primary_name",
+        arguments: primaryNameInput,
+      })
+
+      expect(primaryNameResult.isError).not.toBe(true)
+      expect(primaryNameResult.structuredContent).toMatchObject({
+        replayed: false,
+        entityId,
+        previousPrimaryName: {
+          nameLatin: "Abdullah ibn Abi Quhafah",
+          isPrimary: true,
+        },
+        primaryName: {
+          type: "nasab",
+          nameLatin: "Abdullah ibn Uthman",
+          isPrimary: true,
+        },
+        changed: true,
+        primaryNameChangeId: expect.any(String),
+      })
+
+      const replayedPrimaryName = await client.callTool({
+        name: "set_person_primary_name",
+        arguments: primaryNameInput,
+      })
+
+      expect(replayedPrimaryName.isError).not.toBe(true)
+      expect(replayedPrimaryName.structuredContent).toMatchObject({
+        replayed: true,
+        entityId,
+        previousPrimaryName: {
+          nameLatin: "Abdullah ibn Abi Quhafah",
+        },
+        primaryName: {
+          type: "nasab",
+          nameLatin: "Abdullah ibn Uthman",
+        },
+        changed: true,
+        primaryNameChangeId: expect.any(String),
+      })
+
+      const personAfterPrimaryNameChange = await client.callTool({
+        name: "get_person",
+        arguments: { entityId },
+      })
+
+      expect(personAfterPrimaryNameChange.isError).not.toBe(true)
+      expect(personAfterPrimaryNameChange.structuredContent).toMatchObject({
+        person: {
+          entityId,
+          nameOriginal: "عَبْدُ ٱللَّٰهِ بْنُ عُثْمَانَ",
+          nameLatin: "Abdullah ibn Uthman",
+          names: expect.arrayContaining([
+            expect.objectContaining({
+              nameLatin: "Abdullah ibn Uthman",
+              isPrimary: true,
+            }),
+            expect.objectContaining({
+              nameLatin: "Abdullah ibn Abi Quhafah",
+              isPrimary: false,
+            }),
+          ]),
+        },
+      })
+
+      const rejectedKunyahPrimary = await client.callTool({
+        name: "set_person_primary_name",
+        arguments: {
+          operationKey: `integration-invalid-primary-kunyah-${testId}`,
+          entityId,
+          name: {
+            type: "kunyah",
+            nameOriginal: "أَبُو بَكْرٍ",
+            nameLatin: "Abu Bakar",
+          },
+          reason: "This request intentionally violates the naming policy.",
+        },
+      })
+
+      expect(rejectedKunyahPrimary.isError).toBe(true)
+
       const searchedByLaqab = await client.callTool({
         name: "search_people",
         arguments: { query: "As-Siddiq", limit: 10 },
@@ -493,23 +590,31 @@ integrationTest(
 
       expect(fetchedPerson.status).toBe("active")
       expect(fetchedPerson.gender).toBe("male")
-      expect(fetchedPerson.names).toEqual([
-        expect.objectContaining({
-          type: "personal",
-          nameLatin: "Abdullah ibn Abi Quhafah",
-          isPrimary: true,
-        }),
-        expect.objectContaining({
-          type: "kunyah",
-          nameLatin: "Abu Bakar",
-          isPrimary: false,
-        }),
-        expect.objectContaining({
-          type: "laqab",
-          nameLatin: "As-Siddiq",
-          isPrimary: false,
-        }),
-      ])
+      expect(fetchedPerson.names).toHaveLength(4)
+      expect(fetchedPerson.names).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            type: "nasab",
+            nameLatin: "Abdullah ibn Uthman",
+            isPrimary: true,
+          }),
+          expect.objectContaining({
+            type: "nasab",
+            nameLatin: "Abdullah ibn Abi Quhafah",
+            isPrimary: false,
+          }),
+          expect.objectContaining({
+            type: "kunyah",
+            nameLatin: "Abu Bakar",
+            isPrimary: false,
+          }),
+          expect.objectContaining({
+            type: "laqab",
+            nameLatin: "As-Siddiq",
+            isPrimary: false,
+          }),
+        ]),
+      )
       expect(fetchedPerson.keywords).toContain("Abu Bakr")
       expect(fetchedPerson.keywords).toContain("Al-Siddiq")
       expect(fetchedPerson.keywords).toContain("Abd Allah")

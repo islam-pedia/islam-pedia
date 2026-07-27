@@ -39,6 +39,7 @@ test("exposes the initial MCP tools", async () => {
     "project_context",
     "search_people",
     "set_person_gender",
+    "set_person_primary_name",
     "source_policy",
     "system_health",
   ])
@@ -59,6 +60,13 @@ test("returns structured project context", async () => {
     writePolicy: "owner-directed AI writes with validation and audit",
     sourceMethodology: "salafiyyun",
     sourcePolicyVersion: "salafiyyun-v1",
+    personNamingPolicy: {
+      primaryDisplay:
+        "original personal name (ism), normally expanded as nasab",
+      allowedPrimaryNameTypes: ["personal", "nasab"],
+      alternateNames:
+        "kunyah, laqab, nisbah, and aliases remain separate structured names",
+    },
   })
 })
 

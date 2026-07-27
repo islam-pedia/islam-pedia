@@ -410,6 +410,57 @@ export const personNames = pgTable(
   ],
 )
 
+export const personPrimaryNameChanges = pgTable(
+  "person_primary_name_changes",
+  {
+    id: uuid("id").default(uuidV7).primaryKey(),
+    entityId: uuid("entity_id")
+      .notNull()
+      .references(() => people.entityId, { onDelete: "restrict" }),
+    fromNameId: uuid("from_name_id")
+      .notNull()
+      .references(() => personNames.id, { onDelete: "restrict" }),
+    toNameId: uuid("to_name_id")
+      .notNull()
+      .references(() => personNames.id, { onDelete: "restrict" }),
+    fromType: personNameType("from_type").notNull(),
+    fromNameOriginal: text("from_name_original").notNull(),
+    fromNameLatin: text("from_name_latin").notNull(),
+    toType: personNameType("to_type").notNull(),
+    toNameOriginal: text("to_name_original").notNull(),
+    toNameLatin: text("to_name_latin").notNull(),
+    reason: text("reason").notNull(),
+    createdByRunId: uuid("created_by_run_id")
+      .notNull()
+      .references(() => ingestionRuns.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", {
+      withTimezone: true,
+      mode: "date",
+    })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("person_primary_name_changes_entity_idx").on(table.entityId),
+    uniqueIndex("person_primary_name_changes_run_uidx").on(
+      table.createdByRunId,
+    ),
+    check(
+      "person_primary_name_changes_reason_not_blank",
+      sql`btrim(${table.reason}) <> ''`,
+    ),
+    check(
+      "person_primary_name_changes_names_not_blank",
+      sql`
+        btrim(${table.fromNameOriginal}) <> ''
+        AND btrim(${table.fromNameLatin}) <> ''
+        AND btrim(${table.toNameOriginal}) <> ''
+        AND btrim(${table.toNameLatin}) <> ''
+      `,
+    ),
+  ],
+)
+
 export const entitySearchTerms = pgTable(
   "entity_search_terms",
   {
@@ -668,6 +719,8 @@ export type Entity = typeof entities.$inferSelect
 export type Person = typeof people.$inferSelect
 export type PersonName = typeof personNames.$inferSelect
 export type PersonGenderChange = typeof personGenderChanges.$inferSelect
+export type PersonPrimaryNameChange =
+  typeof personPrimaryNameChanges.$inferSelect
 export type PersonRelationship = typeof personRelationships.$inferSelect
 export type PersonRelationshipEvidence =
   typeof personRelationshipEvidence.$inferSelect

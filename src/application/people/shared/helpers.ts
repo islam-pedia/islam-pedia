@@ -1,4 +1,4 @@
-import { personNameTypes } from "@/domain/people/names"
+import { personNameTypes, primaryPersonNameTypes } from "@/domain/people/names"
 import {
   cleanDisplayText,
   normalizeSearchText,
@@ -38,14 +38,21 @@ export function requireCleanText(
 
 export function preparePerson(input: PersonInput): PreparedPerson {
   const gender = input.gender ?? "unknown"
+  const primaryNameType = input.nameType ?? "personal"
 
   if (!personGenders.includes(gender)) {
     throw new PeopleInputError(`Unsupported person gender "${gender}".`)
   }
 
+  if (!primaryPersonNameTypes.some((type) => type === primaryNameType)) {
+    throw new PeopleInputError(
+      `Primary display names must use the person's original ism as type "personal" or an ism-based "nasab", not "${primaryNameType}". Store kunyah, laqab, nisbah, and aliases as additional names.`,
+    )
+  }
+
   const primaryName = preparePersonName(
     {
-      type: input.nameType ?? "personal",
+      type: primaryNameType,
       nameOriginal: input.nameOriginal,
       nameLatin: input.nameLatin,
     },

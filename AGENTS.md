@@ -61,6 +61,10 @@ entities and their relationships can be explored easily.
   entity identity instead of replacing it.
 - `people.name_original` preserves the original-script display name and
   `people.name_latin` preserves the selected canonical Latin rendering.
+- Use the person's original personal name (ism), normally expanded as a nasab,
+  for the primary display name. Keep better-known kunyah and laqab as separate
+  structured names rather than substituting them for the person's ism in the
+  primary display.
 - `person_names` stores classified forms of a person's name. Use `personal` for
   the personal name (ism), `kunyah` for forms such as Abu/Umm, and the explicit
   `laqab`, `nisbah`, `nasab`, or `alias` types for their respective meanings.

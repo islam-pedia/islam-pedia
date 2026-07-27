@@ -69,6 +69,15 @@ export interface AddPersonNamesInput {
   source?: IngestionSourceInput
 }
 
+export interface SetPersonPrimaryNameInput {
+  operationKey: string
+  entityId: string
+  name: PersonNameInput
+  reason: string
+  instruction?: string
+  source?: IngestionSourceInput
+}
+
 export interface EvidenceSourceInput {
   category: SourceCategory
   label: string
@@ -201,6 +210,16 @@ export interface SetPersonGenderResult extends Record<string, unknown> {
   gender: PersonGender
   changed: boolean
   genderChangeId: string | null
+}
+
+export interface SetPersonPrimaryNameResult extends Record<string, unknown> {
+  runId: string
+  replayed: boolean
+  entityId: string
+  previousPrimaryName: PersonNameView
+  primaryName: PersonNameView
+  changed: boolean
+  primaryNameChangeId: string | null
 }
 
 export interface AddPersonRelationshipResult extends Record<string, unknown> {

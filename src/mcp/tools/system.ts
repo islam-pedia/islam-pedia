@@ -18,6 +18,18 @@ const projectContextOutputSchema = z.object({
   writePolicy: z.literal("owner-directed AI writes with validation and audit"),
   sourceMethodology: z.literal("salafiyyun"),
   sourcePolicyVersion: z.literal("salafiyyun-v1"),
+  personNamingPolicy: z.object({
+    primaryDisplay: z.literal(
+      "original personal name (ism), normally expanded as nasab",
+    ),
+    allowedPrimaryNameTypes: z.tuple([
+      z.literal("personal"),
+      z.literal("nasab"),
+    ]),
+    alternateNames: z.literal(
+      "kunyah, laqab, nisbah, and aliases remain separate structured names",
+    ),
+  }),
 })
 
 const sourcePolicyOutputSchema = z.object({
@@ -91,7 +103,7 @@ export function registerSystemTools(server: McpServer): void {
     {
       title: "Project context",
       description:
-        "Return the current architectural context for Islam Pedia clients.",
+        "Return the current architectural and canonical editorial context for Islam Pedia clients, including the enforced person naming policy.",
       inputSchema: z.object({}),
       outputSchema: projectContextOutputSchema,
       annotations: {
@@ -110,6 +122,13 @@ export function registerSystemTools(server: McpServer): void {
           "owner-directed AI writes with validation and audit" as const,
         sourceMethodology: "salafiyyun" as const,
         sourcePolicyVersion: "salafiyyun-v1" as const,
+        personNamingPolicy: {
+          primaryDisplay:
+            "original personal name (ism), normally expanded as nasab" as const,
+          allowedPrimaryNameTypes: ["personal", "nasab"] as const,
+          alternateNames:
+            "kunyah, laqab, nisbah, and aliases remain separate structured names" as const,
+        },
       }
 
       return {

@@ -13,9 +13,10 @@ import {
   PeopleInputError,
   searchPeople,
   setPersonGender,
+  setPersonPrimaryName,
 } from "@/application/people"
 import { hadithGrades, sourceCategories } from "@/domain/evidence/source-policy"
-import { personNameTypes } from "@/domain/people/names"
+import { personNameTypes, primaryPersonNameTypes } from "@/domain/people/names"
 import {
   personGenders,
   personRelationshipTypes,
@@ -27,6 +28,7 @@ const sourceInputSchema = z.object({
 })
 
 const personNameTypeSchema = z.enum(personNameTypes)
+const primaryPersonNameTypeSchema = z.enum(primaryPersonNameTypes)
 const personGenderSchema = z.enum(personGenders)
 const personRelationshipTypeSchema = z.enum(personRelationshipTypes)
 const assertionStatusSchema = z.enum([
@@ -40,6 +42,10 @@ const personNameInputSchema = z.object({
   type: personNameTypeSchema,
   nameOriginal: z.string().trim().min(1).max(500),
   nameLatin: z.string().trim().min(1).max(500),
+})
+
+const primaryPersonNameInputSchema = personNameInputSchema.extend({
+  type: primaryPersonNameTypeSchema,
 })
 
 const personNameOutputSchema = personNameInputSchema.extend({
@@ -252,7 +258,7 @@ export function registerPeopleTools(server: McpServer): void {
     {
       title: "Import people",
       description:
-        "Import people with a primary classified name, optional additional names such as kunyah or laqab, and search-only keywords. Similar names are reported as candidates and are never merged automatically.",
+        "Import people using the person's original personal name (ism), normally expanded as a nasab, for the primary display. Primary nameType must be personal or nasab; store kunyah, laqab, nisbah, and aliases as additional names. Similar names are reported as candidates and are never merged automatically.",
       inputSchema: z.object({
         batchKey: z.string().trim().min(1).max(300),
         instruction: z.string().trim().min(1).max(5_000).optional(),
@@ -263,7 +269,7 @@ export function registerPeopleTools(server: McpServer): void {
               nameOriginal: z.string().trim().min(1).max(500),
               nameLatin: z.string().trim().min(1).max(500),
               gender: personGenderSchema.default("unknown"),
-              nameType: personNameTypeSchema.default("personal"),
+              nameType: primaryPersonNameTypeSchema.default("personal"),
               names: z.array(personNameInputSchema).max(100).default([]),
               keywords: z
                 .array(z.string().trim().min(1).max(500))
@@ -428,6 +434,50 @@ export function registerPeopleTools(server: McpServer): void {
     async (input) => {
       try {
         const output = await setPersonGender(input)
+
+        return {
+          content: [{ type: "text", text: JSON.stringify(output) }],
+          structuredContent: output,
+        }
+      } catch (error) {
+        return toolError(error)
+      }
+    },
+  )
+
+  server.registerTool(
+    "set_person_primary_name",
+    {
+      title: "Set person primary name",
+      description:
+        "Set or correct a person's primary display using the original personal name (ism), normally expanded as a nasab. Only personal or nasab is accepted; kunyah, laqab, nisbah, and aliases remain alternate structured names. The change is idempotent and audited.",
+      inputSchema: z.object({
+        operationKey: z.string().trim().min(1).max(300),
+        entityId: z.uuid(),
+        name: primaryPersonNameInputSchema,
+        reason: z.string().trim().min(1).max(5_000),
+        instruction: z.string().trim().min(1).max(5_000).optional(),
+        source: sourceInputSchema.optional(),
+      }),
+      outputSchema: z.object({
+        runId: z.uuid(),
+        replayed: z.boolean(),
+        entityId: z.uuid(),
+        previousPrimaryName: personNameOutputSchema,
+        primaryName: personNameOutputSchema,
+        changed: z.boolean(),
+        primaryNameChangeId: z.uuid().nullable(),
+      }),
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async (input) => {
+      try {
+        const output = await setPersonPrimaryName(input)
 
         return {
           content: [{ type: "text", text: JSON.stringify(output) }],
