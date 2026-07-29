@@ -322,6 +322,122 @@ export interface GetPersonRelationshipsResult extends Record<string, unknown> {
   relationships: PersonRelationshipView[]
 }
 
+export interface FamilyBranchMemberNameInput {
+  type: PersonNameType
+  nameOriginal: string
+  nameLatin: string
+}
+
+export interface FamilyBranchSourceMemberInput {
+  nameOriginal: string
+  nameLatin: string
+  names?: FamilyBranchMemberNameInput[]
+}
+
+export interface AuditFamilyBranchInput {
+  rootPersonId: string
+  relationshipType: PersonRelationshipType
+  direction: PersonRelationshipDirection
+  sourceMembers: FamilyBranchSourceMemberInput[]
+}
+
+export interface FamilyBranchAuditMatch {
+  sourceIndex: number
+  sourceMember: FamilyBranchSourceMemberInput
+  person: SearchPeopleResult
+  relationship: PersonRelationshipView
+}
+
+export interface FamilyBranchAuditCandidateGroup {
+  sourceIndex: number
+  sourceMember: FamilyBranchSourceMemberInput
+  candidates: SearchPeopleResult[]
+}
+
+export interface FamilyBranchAuditMissing {
+  sourceIndex: number
+  sourceMember: FamilyBranchSourceMemberInput
+  fuzzyCandidates: SearchPeopleResult[]
+}
+
+export interface AuditFamilyBranchResult extends Record<string, unknown> {
+  rootPerson: PersonView
+  relationshipType: PersonRelationshipType
+  direction: PersonRelationshipDirection
+  matched: FamilyBranchAuditMatch[]
+  unlinked: FamilyBranchAuditCandidateGroup[]
+  ambiguous: FamilyBranchAuditCandidateGroup[]
+  missing: FamilyBranchAuditMissing[]
+  databaseOnly: PersonRelationshipView[]
+}
+
+export interface ImportFamilyBranchRelationshipInput {
+  type: PersonRelationshipType
+  direction: PersonRelationshipDirection
+  status: AssertionStatus
+  reason: string
+  evidence: ActivatePersonEvidenceInput[]
+}
+
+export interface ImportFamilyBranchMemberInput {
+  existingPersonId?: string
+  person?: PersonInput
+  relationship: ImportFamilyBranchRelationshipInput
+}
+
+export interface ImportFamilyBranchInput {
+  operationKey: string
+  rootPersonId: string
+  instruction?: string
+  source?: IngestionSourceInput
+  members: ImportFamilyBranchMemberInput[]
+}
+
+export interface ImportFamilyBranchMemberResult {
+  index: number
+  created: boolean
+  person: ImportedPersonView
+  relationship: AddPersonRelationshipResult
+}
+
+export interface ImportFamilyBranchResult extends Record<string, unknown> {
+  runId: string
+  replayed: boolean
+  rootPersonId: string
+  peopleRunId: string | null
+  members: ImportFamilyBranchMemberResult[]
+}
+
+export interface GetFamilyTreeInput {
+  rootPersonId: string
+  maxDepth?: number
+  maxNodes?: number
+  relationshipTypes?: PersonRelationshipType[]
+  statuses?: AssertionStatus[]
+}
+
+export interface FamilyTreeNode {
+  depth: number
+  person: PersonView
+}
+
+export interface FamilyTreeEdge {
+  relationshipId: string
+  type: PersonRelationshipType
+  status: AssertionStatus
+  fromPersonId: string
+  toPersonId: string
+}
+
+export interface GetFamilyTreeResult extends Record<string, unknown> {
+  rootPersonId: string
+  maxDepth: number
+  maxNodes: number
+  truncated: boolean
+  nodes: FamilyTreeNode[]
+  edges: FamilyTreeEdge[]
+}
+
 export interface PreparedPerson {
   nameOriginal: string
   nameOriginalNormalized: string

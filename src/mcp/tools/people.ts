@@ -5,10 +5,13 @@ import {
   addPersonKeywords,
   addPersonNames,
   addPersonRelationship,
+  auditFamilyBranch,
+  getFamilyTree,
   getPerson,
   getPersonEvidence,
   getPersonRelationships,
   IdempotencyConflictError,
+  importFamilyBranch,
   importPeople,
   PeopleInputError,
   searchPeople,
@@ -104,6 +107,25 @@ const personOutputSchema = z.object({
 
 const importedPersonOutputSchema = personOutputSchema.extend({
   duplicateCandidateIds: z.array(z.uuid()),
+})
+
+const searchPersonOutputSchema = personOutputSchema.extend({
+  score: z.number(),
+})
+
+const personInputSchema = z.object({
+  nameOriginal: z.string().trim().min(1).max(500),
+  nameLatin: z.string().trim().min(1).max(500),
+  gender: personGenderSchema.default("unknown"),
+  nameType: primaryPersonNameTypeSchema.default("personal"),
+  names: z.array(personNameInputSchema).max(100).default([]),
+  keywords: z.array(z.string().trim().min(1).max(500)).max(100).default([]),
+})
+
+const familyBranchSourceMemberSchema = z.object({
+  nameOriginal: z.string().trim().min(1).max(500),
+  nameLatin: z.string().trim().min(1).max(500),
+  names: z.array(personNameInputSchema).max(100).default([]),
 })
 
 const activatePersonOutputSchema = z.object({
@@ -225,6 +247,28 @@ const personRelationshipOutputSchema = z.object({
   updatedAt: z.string(),
 })
 
+const addPersonRelationshipOutputSchema = z.object({
+  runId: z.uuid(),
+  replayed: z.boolean(),
+  relationshipId: z.uuid(),
+  created: z.boolean(),
+  status: assertionStatusSchema,
+  evidenceIds: z.array(z.uuid()),
+  statusChangeId: z.uuid().nullable(),
+})
+
+const familyBranchAuditCandidateGroupSchema = z.object({
+  sourceIndex: z.number().int().nonnegative(),
+  sourceMember: familyBranchSourceMemberSchema,
+  candidates: z.array(searchPersonOutputSchema),
+})
+
+const familyBranchAuditMissingSchema = z.object({
+  sourceIndex: z.number().int().nonnegative(),
+  sourceMember: familyBranchSourceMemberSchema,
+  fuzzyCandidates: z.array(searchPersonOutputSchema),
+})
+
 function toolError(error: unknown): {
   content: Array<{ type: "text"; text: string }>
   isError: true
@@ -263,22 +307,7 @@ export function registerPeopleTools(server: McpServer): void {
         batchKey: z.string().trim().min(1).max(300),
         instruction: z.string().trim().min(1).max(5_000).optional(),
         source: sourceInputSchema.optional(),
-        people: z
-          .array(
-            z.object({
-              nameOriginal: z.string().trim().min(1).max(500),
-              nameLatin: z.string().trim().min(1).max(500),
-              gender: personGenderSchema.default("unknown"),
-              nameType: primaryPersonNameTypeSchema.default("personal"),
-              names: z.array(personNameInputSchema).max(100).default([]),
-              keywords: z
-                .array(z.string().trim().min(1).max(500))
-                .max(100)
-                .default([]),
-            }),
-          )
-          .min(1)
-          .max(500),
+        people: z.array(personInputSchema).min(1).max(500),
       }),
       outputSchema: z.object({
         runId: z.uuid(),
@@ -312,6 +341,213 @@ export function registerPeopleTools(server: McpServer): void {
   )
 
   server.registerTool(
+    "import_family_branch",
+    {
+      title: "Import family branch",
+      description:
+        "Run an idempotent, resumable family import workflow. Each member either reuses an explicit existing person ID or creates a provisional person, then records one canonical directed relationship with evidence. Duplicate candidates are reported and never merged automatically.",
+      inputSchema: z.object({
+        operationKey: z.string().trim().min(1).max(240),
+        rootPersonId: z.uuid(),
+        instruction: z.string().trim().min(1).max(5_000).optional(),
+        source: sourceInputSchema.optional(),
+        members: z
+          .array(
+            z
+              .object({
+                existingPersonId: z.uuid().optional(),
+                person: personInputSchema.optional(),
+                relationship: z.object({
+                  type: personRelationshipTypeSchema,
+                  direction: z.enum(["outgoing", "incoming"]),
+                  status: assertionStatusSchema.default("accepted"),
+                  reason: z.string().trim().min(1).max(5_000),
+                  evidence: z.array(evidenceInputSchema).min(1).max(20),
+                }),
+              })
+              .refine(
+                ({ existingPersonId, person }) =>
+                  (existingPersonId === undefined) !== (person === undefined),
+                {
+                  message:
+                    "Provide exactly one of existingPersonId or person for each member.",
+                },
+              ),
+          )
+          .min(1)
+          .max(200),
+      }),
+      outputSchema: z.object({
+        runId: z.uuid(),
+        replayed: z.boolean(),
+        rootPersonId: z.uuid(),
+        peopleRunId: z.uuid().nullable(),
+        members: z.array(
+          z.object({
+            index: z.number().int().nonnegative(),
+            created: z.boolean(),
+            person: importedPersonOutputSchema,
+            relationship: addPersonRelationshipOutputSchema,
+          }),
+        ),
+      }),
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async (input) => {
+      try {
+        const output = await importFamilyBranch(input)
+
+        return {
+          content: [{ type: "text", text: JSON.stringify(output) }],
+          structuredContent: output,
+        }
+      } catch (error) {
+        return toolError(error)
+      }
+    },
+  )
+
+  server.registerTool(
+    "audit_family_branch",
+    {
+      title: "Audit family branch",
+      description:
+        "Compare a source-derived list of direct family members supplied by the caller with one stored relationship branch. Returns exact matches, existing-but-unlinked people, ambiguous identities, missing people with fuzzy candidates, and database-only relationships. This tool does not browse or modify data.",
+      inputSchema: z.object({
+        rootPersonId: z.uuid(),
+        relationshipType: personRelationshipTypeSchema,
+        direction: z.enum(["outgoing", "incoming"]),
+        sourceMembers: z.array(familyBranchSourceMemberSchema).min(1).max(100),
+      }),
+      outputSchema: z.object({
+        rootPerson: personOutputSchema,
+        relationshipType: personRelationshipTypeSchema,
+        direction: z.enum(["outgoing", "incoming"]),
+        matched: z.array(
+          z.object({
+            sourceIndex: z.number().int().nonnegative(),
+            sourceMember: familyBranchSourceMemberSchema,
+            person: searchPersonOutputSchema,
+            relationship: personRelationshipOutputSchema,
+          }),
+        ),
+        unlinked: z.array(familyBranchAuditCandidateGroupSchema),
+        ambiguous: z.array(familyBranchAuditCandidateGroupSchema),
+        missing: z.array(familyBranchAuditMissingSchema),
+        databaseOnly: z.array(personRelationshipOutputSchema),
+      }),
+      annotations: {
+        readOnlyHint: true,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async (input) => {
+      try {
+        const output = await auditFamilyBranch(input)
+
+        if (!output) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: `Person "${input.rootPersonId}" was not found.`,
+              },
+            ],
+            isError: true,
+          }
+        }
+
+        return {
+          content: [{ type: "text", text: JSON.stringify(output) }],
+          structuredContent: output,
+        }
+      } catch (error) {
+        return toolError(error)
+      }
+    },
+  )
+
+  server.registerTool(
+    "get_family_tree",
+    {
+      title: "Get family tree",
+      description:
+        "Traverse a person's relationship graph into a bounded family tree. Returns unique people as nodes and canonical directed relationships as edges, with configurable depth, node limit, relationship types, and assertion statuses.",
+      inputSchema: z.object({
+        rootPersonId: z.uuid(),
+        maxDepth: z.number().int().min(1).max(6).default(2),
+        maxNodes: z.number().int().min(1).max(500).default(100),
+        relationshipTypes: z
+          .array(personRelationshipTypeSchema)
+          .min(1)
+          .max(personRelationshipTypes.length)
+          .default([...personRelationshipTypes]),
+        statuses: z
+          .array(assertionStatusSchema)
+          .min(1)
+          .max(4)
+          .default(["accepted", "uncertain", "disputed"]),
+      }),
+      outputSchema: z.object({
+        rootPersonId: z.uuid(),
+        maxDepth: z.number().int(),
+        maxNodes: z.number().int(),
+        truncated: z.boolean(),
+        nodes: z.array(
+          z.object({
+            depth: z.number().int().nonnegative(),
+            person: personOutputSchema,
+          }),
+        ),
+        edges: z.array(
+          z.object({
+            relationshipId: z.uuid(),
+            type: personRelationshipTypeSchema,
+            status: assertionStatusSchema,
+            fromPersonId: z.uuid(),
+            toPersonId: z.uuid(),
+          }),
+        ),
+      }),
+      annotations: {
+        readOnlyHint: true,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async (input) => {
+      try {
+        const output = await getFamilyTree(input)
+
+        if (!output) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: `Person "${input.rootPersonId}" was not found.`,
+              },
+            ],
+            isError: true,
+          }
+        }
+
+        return {
+          content: [{ type: "text", text: JSON.stringify(output) }],
+          structuredContent: output,
+        }
+      } catch (error) {
+        return toolError(error)
+      }
+    },
+  )
+
+  server.registerTool(
     "search_people",
     {
       title: "Search people",
@@ -324,11 +560,7 @@ export function registerPeopleTools(server: McpServer): void {
       outputSchema: z.object({
         query: z.string(),
         count: z.number().int().nonnegative(),
-        people: z.array(
-          personOutputSchema.extend({
-            score: z.number(),
-          }),
-        ),
+        people: z.array(searchPersonOutputSchema),
       }),
       annotations: {
         readOnlyHint: true,
@@ -505,15 +737,7 @@ export function registerPeopleTools(server: McpServer): void {
         instruction: z.string().trim().min(1).max(5_000).optional(),
         evidence: z.array(evidenceInputSchema).min(1).max(20),
       }),
-      outputSchema: z.object({
-        runId: z.uuid(),
-        replayed: z.boolean(),
-        relationshipId: z.uuid(),
-        created: z.boolean(),
-        status: assertionStatusSchema,
-        evidenceIds: z.array(z.uuid()),
-        statusChangeId: z.uuid().nullable(),
-      }),
+      outputSchema: addPersonRelationshipOutputSchema,
       annotations: {
         readOnlyHint: false,
         destructiveHint: false,
