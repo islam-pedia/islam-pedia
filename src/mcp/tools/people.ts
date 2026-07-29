@@ -13,8 +13,10 @@ import {
   IdempotencyConflictError,
   importFamilyBranch,
   importPeople,
+  mergePeople,
   PeopleInputError,
   searchPeople,
+  searchPeopleBatch,
   setPersonGender,
   setPersonPrimaryName,
 } from "@/application/people"
@@ -255,6 +257,37 @@ const addPersonRelationshipOutputSchema = z.object({
   status: assertionStatusSchema,
   evidenceIds: z.array(z.uuid()),
   statusChangeId: z.uuid().nullable(),
+})
+
+const mergePeopleOutputSchema = z.object({
+  runId: z.uuid(),
+  replayed: z.boolean(),
+  duplicatePersonId: z.uuid(),
+  canonicalPersonId: z.uuid(),
+  duplicateStatusBefore: z.enum(["provisional", "active"]),
+  canonicalStatusBefore: z.enum(["provisional", "active"]),
+  canonicalStatusAfter: z.enum(["provisional", "active"]),
+  canonicalGenderBefore: personGenderSchema,
+  canonicalGenderAfter: personGenderSchema,
+  duplicateStatusChangeId: z.uuid(),
+  canonicalStatusChangeId: z.uuid().nullable(),
+  canonicalGenderChangeId: z.uuid().nullable(),
+  mergeEvidenceIds: z.array(z.uuid()),
+  transferred: z.object({
+    names: z.number().int().nonnegative(),
+    keywords: z.number().int().nonnegative(),
+    entityEvidence: z.number().int().nonnegative(),
+    genderChanges: z.number().int().nonnegative(),
+    primaryNameChanges: z.number().int().nonnegative(),
+    relationships: z.number().int().nonnegative(),
+    relationshipEvidence: z.number().int().nonnegative(),
+    relationshipStatusChanges: z.number().int().nonnegative(),
+  }),
+  deduplicated: z.object({
+    names: z.number().int().nonnegative(),
+    keywords: z.number().int().nonnegative(),
+    relationships: z.number().int().nonnegative(),
+  }),
 })
 
 const familyBranchAuditCandidateGroupSchema = z.object({
@@ -588,6 +621,45 @@ export function registerPeopleTools(server: McpServer): void {
   )
 
   server.registerTool(
+    "search_people_batch",
+    {
+      title: "Search people in batch",
+      description:
+        "Search up to 100 person names or variants in one read-only call. Returns an ordered result group for every query, making duplicate prechecks and large family imports more efficient.",
+      inputSchema: z.object({
+        queries: z.array(z.string().trim().min(1).max(500)).min(1).max(100),
+        limitPerQuery: z.number().int().min(1).max(20).default(10),
+      }),
+      outputSchema: z.object({
+        results: z.array(
+          z.object({
+            query: z.string(),
+            count: z.number().int().nonnegative(),
+            people: z.array(searchPersonOutputSchema),
+          }),
+        ),
+      }),
+      annotations: {
+        readOnlyHint: true,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async (input) => {
+      try {
+        const output = await searchPeopleBatch(input)
+
+        return {
+          content: [{ type: "text", text: JSON.stringify(output) }],
+          structuredContent: output,
+        }
+      } catch (error) {
+        return toolError(error)
+      }
+    },
+  )
+
+  server.registerTool(
     "get_person",
     {
       title: "Get person",
@@ -710,6 +782,44 @@ export function registerPeopleTools(server: McpServer): void {
     async (input) => {
       try {
         const output = await setPersonPrimaryName(input)
+
+        return {
+          content: [{ type: "text", text: JSON.stringify(output) }],
+          structuredContent: output,
+        }
+      } catch (error) {
+        return toolError(error)
+      }
+    },
+  )
+
+  server.registerTool(
+    "merge_people",
+    {
+      title: "Merge duplicate people",
+      description:
+        "Destructively merge one confirmed duplicate person into a canonical person in a single audited transaction. Requires current expected original names and activation-grade identity evidence under salafiyyun-v1. Transfers structured names, keywords, evidence, histories, and relationships; deduplicates matching facts; and rejects gender, self-relationship, or relationship-status conflicts instead of guessing.",
+      inputSchema: z.object({
+        operationKey: z.string().trim().min(1).max(300),
+        duplicatePersonId: z.uuid(),
+        canonicalPersonId: z.uuid(),
+        expectedDuplicateNameOriginal: z.string().trim().min(1).max(500),
+        expectedCanonicalNameOriginal: z.string().trim().min(1).max(500),
+        reason: z.string().trim().min(1).max(5_000),
+        instruction: z.string().trim().min(1).max(5_000).optional(),
+        evidence: z.array(evidenceInputSchema).min(1).max(20),
+      }),
+      outputSchema: mergePeopleOutputSchema,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async (input) => {
+      try {
+        const output = await mergePeople(input)
 
         return {
           content: [{ type: "text", text: JSON.stringify(output) }],

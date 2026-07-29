@@ -78,6 +78,17 @@ export interface SetPersonPrimaryNameInput {
   source?: IngestionSourceInput
 }
 
+export interface MergePeopleInput {
+  operationKey: string
+  duplicatePersonId: string
+  canonicalPersonId: string
+  expectedDuplicateNameOriginal: string
+  expectedCanonicalNameOriginal: string
+  reason: string
+  instruction?: string
+  evidence: ActivatePersonEvidenceInput[]
+}
+
 export interface EvidenceSourceInput {
   category: SourceCategory
   label: string
@@ -179,6 +190,19 @@ export interface SearchPeopleResult extends PersonView {
   score: number
 }
 
+export interface SearchPeopleBatchInput {
+  queries: string[]
+  limitPerQuery?: number
+}
+
+export interface SearchPeopleBatchResult extends Record<string, unknown> {
+  results: Array<{
+    query: string
+    count: number
+    people: SearchPeopleResult[]
+  }>
+}
+
 export interface AddPersonKeywordsResult {
   runId: string
   replayed: boolean
@@ -220,6 +244,37 @@ export interface SetPersonPrimaryNameResult extends Record<string, unknown> {
   primaryName: PersonNameView
   changed: boolean
   primaryNameChangeId: string | null
+}
+
+export interface MergePeopleResult extends Record<string, unknown> {
+  runId: string
+  replayed: boolean
+  duplicatePersonId: string
+  canonicalPersonId: string
+  duplicateStatusBefore: Exclude<PersonStatus, "merged">
+  canonicalStatusBefore: Exclude<PersonStatus, "merged">
+  canonicalStatusAfter: Exclude<PersonStatus, "merged">
+  canonicalGenderBefore: PersonGender
+  canonicalGenderAfter: PersonGender
+  duplicateStatusChangeId: string
+  canonicalStatusChangeId: string | null
+  canonicalGenderChangeId: string | null
+  mergeEvidenceIds: string[]
+  transferred: {
+    names: number
+    keywords: number
+    entityEvidence: number
+    genderChanges: number
+    primaryNameChanges: number
+    relationships: number
+    relationshipEvidence: number
+    relationshipStatusChanges: number
+  }
+  deduplicated: {
+    names: number
+    keywords: number
+    relationships: number
+  }
 }
 
 export interface AddPersonRelationshipResult extends Record<string, unknown> {

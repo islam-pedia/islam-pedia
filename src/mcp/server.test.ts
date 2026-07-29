@@ -39,13 +39,31 @@ test("exposes the initial MCP tools", async () => {
     "get_person_relationships",
     "import_family_branch",
     "import_people",
+    "merge_people",
     "project_context",
     "search_people",
+    "search_people_batch",
     "set_person_gender",
     "set_person_primary_name",
     "source_policy",
     "system_health",
   ])
+
+  expect(
+    tools.find(({ name }) => name === "merge_people")?.annotations,
+  ).toMatchObject({
+    readOnlyHint: false,
+    destructiveHint: true,
+    idempotentHint: true,
+    openWorldHint: false,
+  })
+  expect(
+    tools.find(({ name }) => name === "search_people_batch")?.annotations,
+  ).toMatchObject({
+    readOnlyHint: true,
+    idempotentHint: true,
+    openWorldHint: false,
+  })
 })
 
 test("returns structured project context", async () => {
