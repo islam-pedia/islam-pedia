@@ -789,6 +789,7 @@ export const sources = pgTable(
   "sources",
   {
     id: uuid("id").default(uuidV7).primaryKey(),
+    identityKey: text("identity_key"),
     category: sourceCategory("category").notNull(),
     label: text("label").notNull(),
     uri: text("uri"),
@@ -819,6 +820,9 @@ export const sources = pgTable(
       .notNull(),
   },
   (table) => [
+    uniqueIndex("sources_identity_key_uidx")
+      .on(table.identityKey)
+      .where(sql`${table.identityKey} IS NOT NULL`),
     index("sources_created_by_run_idx").on(table.createdByRunId),
     index("sources_category_methodology_idx").on(
       table.category,
@@ -865,6 +869,7 @@ export const sourcePassages = pgTable(
   "source_passages",
   {
     id: uuid("id").default(uuidV7).primaryKey(),
+    identityKey: text("identity_key"),
     sourceId: uuid("source_id")
       .notNull()
       .references(() => sources.id, { onDelete: "restrict" }),
@@ -885,6 +890,9 @@ export const sourcePassages = pgTable(
       .notNull(),
   },
   (table) => [
+    uniqueIndex("source_passages_source_identity_key_uidx")
+      .on(table.sourceId, table.identityKey)
+      .where(sql`${table.identityKey} IS NOT NULL`),
     index("source_passages_source_idx").on(table.sourceId),
     index("source_passages_created_by_run_idx").on(table.createdByRunId),
     check(

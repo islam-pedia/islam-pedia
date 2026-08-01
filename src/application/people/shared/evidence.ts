@@ -1,3 +1,4 @@
+import { and, eq } from "drizzle-orm"
 import type { getDatabase } from "@/db/client"
 import { sourcePassages, sources } from "@/db/schema"
 import {
@@ -8,7 +9,7 @@ import {
 } from "@/domain/evidence/source-policy"
 import { cleanDisplayText } from "@/domain/people/normalization"
 import { PeopleInputError } from "./errors"
-import { requireCleanText } from "./helpers"
+import { hashRequest, requireCleanText } from "./helpers"
 import type {
   ActivatePersonEvidenceInput,
   AssertionStatus,
@@ -161,39 +162,110 @@ export async function insertEvidenceSourcePassage(
   evidence: PreparedEvidence,
   runId: string,
 ): Promise<{ sourceId: string; passageId: string }> {
-  const [source] = await transaction
-    .insert(sources)
-    .values({
-      ...evidence.source,
-      methodology:
-        evidence.source.category === "context_only"
-          ? "context_only"
-          : "salafiyyun",
-      policyVersion: SOURCE_POLICY_VERSION,
-      createdByRunId: runId,
-    })
-    .returning({ id: sources.id })
+  const methodology =
+    evidence.source.category === "context_only" ? "context_only" : "salafiyyun"
+  const sourceIdentityKey = hashRequest({
+    kind: "evidence-source-v1",
+    ...evidence.source,
+    methodology,
+    policyVersion: SOURCE_POLICY_VERSION,
+  })
+  const existingSources = await transaction
+    .select()
+    .from(sources)
+    .where(eq(sources.label, evidence.source.label))
+  const matchingExistingSource = existingSources.find(
+    (source) =>
+      source.category === evidence.source.category &&
+      source.uri === (evidence.source.uri ?? null) &&
+      source.author === (evidence.source.author ?? null) &&
+      source.workTitle === (evidence.source.workTitle ?? null) &&
+      source.edition === (evidence.source.edition ?? null) &&
+      source.methodology === methodology &&
+      source.methodologyBasis === evidence.source.methodologyBasis &&
+      source.policyVersion === SOURCE_POLICY_VERSION &&
+      JSON.stringify(source.verification) ===
+        JSON.stringify(evidence.source.verification),
+  )
+  const [insertedSource] = matchingExistingSource
+    ? []
+    : await transaction
+        .insert(sources)
+        .values({
+          ...evidence.source,
+          identityKey: sourceIdentityKey,
+          methodology,
+          policyVersion: SOURCE_POLICY_VERSION,
+          createdByRunId: runId,
+        })
+        .onConflictDoNothing()
+        .returning({ id: sources.id })
+  const sourceId =
+    matchingExistingSource?.id ??
+    insertedSource?.id ??
+    (
+      await transaction
+        .select({ id: sources.id })
+        .from(sources)
+        .where(eq(sources.identityKey, sourceIdentityKey))
+        .limit(1)
+    )[0]?.id
 
-  if (!source) {
-    throw new Error("Failed to create evidence source.")
+  if (!sourceId) {
+    throw new Error("Failed to create or reuse evidence source.")
   }
 
-  const [passage] = await transaction
-    .insert(sourcePassages)
-    .values({
-      sourceId: source.id,
-      passage: evidence.passage,
-      language: evidence.language,
-      locator: evidence.locator,
-      createdByRunId: runId,
-    })
-    .returning({ id: sourcePassages.id })
+  const passageIdentityKey = hashRequest({
+    kind: "source-passage-v1",
+    passage: evidence.passage,
+    language: evidence.language,
+    locator: evidence.locator,
+  })
+  const existingPassages = await transaction
+    .select()
+    .from(sourcePassages)
+    .where(eq(sourcePassages.sourceId, sourceId))
+  const matchingExistingPassage = existingPassages.find(
+    (passage) =>
+      passage.passage === evidence.passage &&
+      passage.language === (evidence.language ?? null) &&
+      JSON.stringify(passage.locator) === JSON.stringify(evidence.locator),
+  )
+  const [insertedPassage] = matchingExistingPassage
+    ? []
+    : await transaction
+        .insert(sourcePassages)
+        .values({
+          sourceId,
+          identityKey: passageIdentityKey,
+          passage: evidence.passage,
+          language: evidence.language,
+          locator: evidence.locator,
+          createdByRunId: runId,
+        })
+        .onConflictDoNothing()
+        .returning({ id: sourcePassages.id })
+  const passageId =
+    matchingExistingPassage?.id ??
+    insertedPassage?.id ??
+    (
+      await transaction
+        .select({ id: sourcePassages.id })
+        .from(sourcePassages)
+        .where(
+          and(
+            eq(sourcePassages.sourceId, sourceId),
+            eq(sourcePassages.identityKey, passageIdentityKey),
+          ),
+        )
+        .limit(1)
+    )[0]?.id
 
-  if (!passage) {
-    throw new Error("Failed to create source passage.")
+  if (!passageId) {
+    throw new Error("Failed to create or reuse source passage.")
   }
 
-  return { sourceId: source.id, passageId: passage.id }
+  return { sourceId, passageId }
 }
 
 function prepareVerification(

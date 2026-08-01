@@ -6,13 +6,17 @@ import {
   addPersonNames,
   addPersonRelationship,
   assertPersonEncounter,
+  assertPersonEncountersBatch,
   assertPersonReligionAtDeath,
+  assertPersonReligionsAtDeathBatch,
   auditFamilyBranch,
+  auditFamilyFacts,
   auditSpouseCoverage,
   getFamilyTree,
   getPerson,
   getPersonEncounters,
   getPersonEvidence,
+  getPersonFactsBatch,
   getPersonRelationships,
   getPersonReligionAtDeath,
   IdempotencyConflictError,
@@ -111,6 +115,27 @@ const evidenceInputSchema = z.object({
   assertion: z.string().trim().min(1).max(5_000),
   interpretation: z.enum(["explicit", "inferred"]),
   notes: z.string().trim().min(1).max(5_000).optional(),
+})
+
+const religionAtDeathAssertionInputSchema = z.object({
+  operationKey: z.string().trim().min(1).max(300),
+  personId: z.uuid(),
+  value: personReligionAtDeathSchema,
+  status: assertionStatusSchema.default("accepted"),
+  reason: z.string().trim().min(1).max(5_000),
+  instruction: z.string().trim().min(1).max(5_000).optional(),
+  evidence: z.array(evidenceInputSchema).min(1).max(20),
+})
+
+const encounterAssertionInputSchema = z.object({
+  operationKey: z.string().trim().min(1).max(300),
+  firstPersonId: z.uuid(),
+  secondPersonId: z.uuid(),
+  outcome: personEncounterOutcomeSchema,
+  status: assertionStatusSchema.default("accepted"),
+  reason: z.string().trim().min(1).max(5_000),
+  instruction: z.string().trim().min(1).max(5_000).optional(),
+  evidence: z.array(evidenceInputSchema).min(1).max(20),
 })
 
 const personOutputSchema = z.object({
@@ -273,6 +298,59 @@ const personEncounterAssertionOutputSchema = z.object({
   createdAt: z.string(),
   updatedAt: z.string(),
 })
+
+const religionAtDeathOutputSchema = z.object({
+  personId: z.uuid(),
+  conclusion: z.union([personReligionAtDeathSchema, z.literal("unknown")]),
+  assertions: z.array(religionAtDeathAssertionOutputSchema),
+})
+
+const encounterResultOutputSchema = z.object({
+  runId: z.uuid(),
+  replayed: z.boolean(),
+  assertionId: z.uuid(),
+  created: z.boolean(),
+  firstPersonId: z.uuid(),
+  secondPersonId: z.uuid(),
+  outcome: personEncounterOutcomeSchema,
+  status: assertionStatusSchema,
+  evidenceIds: z.array(z.uuid()),
+  statusChangeId: z.uuid().nullable(),
+})
+
+const religionAtDeathResultOutputSchema = z.object({
+  runId: z.uuid(),
+  replayed: z.boolean(),
+  assertionId: z.uuid(),
+  created: z.boolean(),
+  value: personReligionAtDeathSchema,
+  status: assertionStatusSchema,
+  evidenceIds: z.array(z.uuid()),
+  statusChangeId: z.uuid().nullable(),
+})
+
+const batchAssertionFailureOutputSchema = z.object({
+  index: z.number().int().nonnegative(),
+  operationKey: z.string(),
+  status: z.literal("failed"),
+  error: z.string(),
+})
+
+const familySideSchema = z.enum(["paternal", "maternal", "unknown"])
+const extendedFamilyRoleSchema = z.enum([
+  "paternal_uncle",
+  "paternal_aunt",
+  "paternal_parent_sibling",
+  "maternal_uncle",
+  "maternal_aunt",
+  "maternal_parent_sibling",
+  "unknown_side_uncle",
+  "unknown_side_aunt",
+  "unknown_side_parent_sibling",
+  "paternal_cousin",
+  "maternal_cousin",
+  "unknown_side_cousin",
+])
 
 const personRelationshipOutputSchema = z.object({
   relationshipId: z.uuid(),
@@ -1379,6 +1457,247 @@ export function registerPeopleTools(server: McpServer): void {
               {
                 type: "text",
                 text: `Person "${entityId}" was not found.`,
+              },
+            ],
+            isError: true,
+          }
+        }
+
+        return {
+          content: [{ type: "text", text: JSON.stringify(output) }],
+          structuredContent: output,
+        }
+      } catch (error) {
+        return toolError(error)
+      }
+    },
+  )
+
+  server.registerTool(
+    "get_person_facts_batch",
+    {
+      title: "Get person facts in batch",
+      description:
+        "Read religion-at-death facts for up to 100 people and, optionally, each person's encounter conclusion with one target person. Missing people and unknown conclusions remain explicit in the ordered result.",
+      inputSchema: z.object({
+        personIds: z.array(z.uuid()).min(1).max(100),
+        encounterWithPersonId: z.uuid().optional(),
+      }),
+      outputSchema: z.object({
+        encounterWithPersonId: z.uuid().nullable(),
+        items: z.array(
+          z.object({
+            personId: z.uuid(),
+            found: z.boolean(),
+            person: personOutputSchema.nullable(),
+            religionAtDeath: religionAtDeathOutputSchema.nullable(),
+            encounterWith: z
+              .object({
+                personId: z.uuid(),
+                conclusion: z.union([
+                  personEncounterOutcomeSchema,
+                  z.literal("unknown"),
+                ]),
+                assertions: z.array(personEncounterAssertionOutputSchema),
+              })
+              .nullable(),
+          }),
+        ),
+      }),
+      annotations: {
+        readOnlyHint: true,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async (input) => {
+      try {
+        const output = await getPersonFactsBatch(input)
+        return {
+          content: [{ type: "text", text: JSON.stringify(output) }],
+          structuredContent: output,
+        }
+      } catch (error) {
+        return toolError(error)
+      }
+    },
+  )
+
+  server.registerTool(
+    "assert_person_religions_at_death_batch",
+    {
+      title: "Assert religions at death in batch",
+      description:
+        "Run up to 100 independently idempotent religion-at-death assertions. Each item retains its own evidence and operation key; validation failures are returned per item without hiding successful writes.",
+      inputSchema: z.object({
+        assertions: z
+          .array(religionAtDeathAssertionInputSchema)
+          .min(1)
+          .max(100),
+      }),
+      outputSchema: z.object({
+        total: z.number().int().nonnegative(),
+        succeeded: z.number().int().nonnegative(),
+        failed: z.number().int().nonnegative(),
+        items: z.array(
+          z.discriminatedUnion("status", [
+            z.object({
+              index: z.number().int().nonnegative(),
+              operationKey: z.string(),
+              status: z.literal("succeeded"),
+              result: religionAtDeathResultOutputSchema,
+            }),
+            batchAssertionFailureOutputSchema,
+          ]),
+        ),
+      }),
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async (input) => {
+      try {
+        const output = await assertPersonReligionsAtDeathBatch(input)
+        return {
+          content: [{ type: "text", text: JSON.stringify(output) }],
+          structuredContent: output,
+        }
+      } catch (error) {
+        return toolError(error)
+      }
+    },
+  )
+
+  server.registerTool(
+    "assert_person_encounters_batch",
+    {
+      title: "Assert person encounters in batch",
+      description:
+        "Run up to 100 independently idempotent symmetric encounter assertions. Each item retains its own evidence and operation key; validation failures are returned per item without hiding successful writes.",
+      inputSchema: z.object({
+        assertions: z.array(encounterAssertionInputSchema).min(1).max(100),
+      }),
+      outputSchema: z.object({
+        total: z.number().int().nonnegative(),
+        succeeded: z.number().int().nonnegative(),
+        failed: z.number().int().nonnegative(),
+        items: z.array(
+          z.discriminatedUnion("status", [
+            z.object({
+              index: z.number().int().nonnegative(),
+              operationKey: z.string(),
+              status: z.literal("succeeded"),
+              result: encounterResultOutputSchema,
+            }),
+            batchAssertionFailureOutputSchema,
+          ]),
+        ),
+      }),
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async (input) => {
+      try {
+        const output = await assertPersonEncountersBatch(input)
+        return {
+          content: [{ type: "text", text: JSON.stringify(output) }],
+          structuredContent: output,
+        }
+      } catch (error) {
+        return toolError(error)
+      }
+    },
+  )
+
+  server.registerTool(
+    "audit_family_facts",
+    {
+      title: "Audit extended-family facts",
+      description:
+        "Derive paternal and maternal uncles, aunts, and cousins from evidenced biological-parent paths, then report each member's religion-at-death and encounter conclusion with the root person. Unknown and conflicting facts remain visible; kinship paths and assertion statuses are returned for review.",
+      inputSchema: z.object({
+        rootPersonId: z.uuid(),
+        sides: z
+          .array(familySideSchema)
+          .min(1)
+          .max(3)
+          .default(["paternal", "maternal", "unknown"]),
+        relationshipStatuses: z
+          .array(assertionStatusSchema)
+          .min(1)
+          .max(4)
+          .default(["accepted", "uncertain", "disputed"]),
+      }),
+      outputSchema: z.object({
+        rootPerson: personOutputSchema,
+        sides: z.array(familySideSchema),
+        relationshipStatuses: z.array(assertionStatusSchema),
+        summary: z.object({
+          totalMembers: z.number().int().nonnegative(),
+          byRole: z.object({
+            paternal_uncle: z.number().int().nonnegative(),
+            paternal_aunt: z.number().int().nonnegative(),
+            paternal_parent_sibling: z.number().int().nonnegative(),
+            maternal_uncle: z.number().int().nonnegative(),
+            maternal_aunt: z.number().int().nonnegative(),
+            maternal_parent_sibling: z.number().int().nonnegative(),
+            unknown_side_uncle: z.number().int().nonnegative(),
+            unknown_side_aunt: z.number().int().nonnegative(),
+            unknown_side_parent_sibling: z.number().int().nonnegative(),
+            paternal_cousin: z.number().int().nonnegative(),
+            maternal_cousin: z.number().int().nonnegative(),
+            unknown_side_cousin: z.number().int().nonnegative(),
+          }),
+          religionKnown: z.number().int().nonnegative(),
+          religionUnknown: z.number().int().nonnegative(),
+          encounterKnown: z.number().int().nonnegative(),
+          encounterUnknown: z.number().int().nonnegative(),
+        }),
+        members: z.array(
+          z.object({
+            role: extendedFamilyRoleSchema,
+            person: personOutputSchema,
+            derivationPaths: z.array(
+              z.object({
+                side: familySideSchema,
+                relationshipIds: z.array(z.uuid()),
+                relationshipStatuses: z.array(assertionStatusSchema),
+              }),
+            ),
+            religionAtDeath: religionAtDeathOutputSchema,
+            encounterWithRoot: z.object({
+              conclusion: z.union([
+                personEncounterOutcomeSchema,
+                z.literal("unknown"),
+              ]),
+              assertions: z.array(personEncounterAssertionOutputSchema),
+            }),
+          }),
+        ),
+      }),
+      annotations: {
+        readOnlyHint: true,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async (input) => {
+      try {
+        const output = await auditFamilyFacts(input)
+
+        if (!output) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: `Person "${input.rootPersonId}" was not found.`,
               },
             ],
             isError: true,

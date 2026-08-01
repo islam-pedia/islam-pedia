@@ -185,6 +185,14 @@ export interface AssertPersonEncounterInput {
   evidence: ActivatePersonEvidenceInput[]
 }
 
+export interface AssertPersonReligionsAtDeathBatchInput {
+  assertions: AssertPersonReligionAtDeathInput[]
+}
+
+export interface AssertPersonEncountersBatchInput {
+  assertions: AssertPersonEncounterInput[]
+}
+
 export interface PersonView {
   entityId: string
   status: PersonStatus
@@ -341,6 +349,45 @@ export interface AssertPersonEncounterResult extends Record<string, unknown> {
   statusChangeId: string | null
 }
 
+export interface BatchAssertionFailure extends Record<string, unknown> {
+  index: number
+  operationKey: string
+  status: "failed"
+  error: string
+}
+
+export interface AssertPersonReligionAtDeathBatchSuccess
+  extends Record<string, unknown> {
+  index: number
+  operationKey: string
+  status: "succeeded"
+  result: AssertPersonReligionAtDeathResult
+}
+
+export interface AssertPersonEncounterBatchSuccess
+  extends Record<string, unknown> {
+  index: number
+  operationKey: string
+  status: "succeeded"
+  result: AssertPersonEncounterResult
+}
+
+export interface AssertPersonReligionsAtDeathBatchResult
+  extends Record<string, unknown> {
+  total: number
+  succeeded: number
+  failed: number
+  items: Array<AssertPersonReligionAtDeathBatchSuccess | BatchAssertionFailure>
+}
+
+export interface AssertPersonEncountersBatchResult
+  extends Record<string, unknown> {
+  total: number
+  succeeded: number
+  failed: number
+  items: Array<AssertPersonEncounterBatchSuccess | BatchAssertionFailure>
+}
+
 export interface PersonEvidenceView {
   evidenceId: string
   assertion: string
@@ -478,6 +525,28 @@ export interface PersonEncounterView {
 export interface GetPersonEncountersResult extends Record<string, unknown> {
   personId: string
   encounters: PersonEncounterView[]
+}
+
+export interface GetPersonFactsBatchInput {
+  personIds: string[]
+  encounterWithPersonId?: string
+}
+
+export interface PersonFactsBatchItem {
+  personId: string
+  found: boolean
+  person: PersonView | null
+  religionAtDeath: GetPersonReligionAtDeathResult | null
+  encounterWith: {
+    personId: string
+    conclusion: PersonEncounterOutcome | "unknown"
+    assertions: PersonEncounterAssertionView[]
+  } | null
+}
+
+export interface GetPersonFactsBatchResult extends Record<string, unknown> {
+  encounterWithPersonId: string | null
+  items: PersonFactsBatchItem[]
 }
 
 export interface FamilyBranchMemberNameInput {
@@ -639,6 +708,60 @@ export interface GetFamilyTreeResult extends Record<string, unknown> {
   truncated: boolean
   nodes: FamilyTreeNode[]
   edges: FamilyTreeEdge[]
+}
+
+export type FamilySide = "paternal" | "maternal" | "unknown"
+
+export type ExtendedFamilyRole =
+  | "paternal_uncle"
+  | "paternal_aunt"
+  | "paternal_parent_sibling"
+  | "maternal_uncle"
+  | "maternal_aunt"
+  | "maternal_parent_sibling"
+  | "unknown_side_uncle"
+  | "unknown_side_aunt"
+  | "unknown_side_parent_sibling"
+  | "paternal_cousin"
+  | "maternal_cousin"
+  | "unknown_side_cousin"
+
+export interface AuditFamilyFactsInput {
+  rootPersonId: string
+  sides?: FamilySide[]
+  relationshipStatuses?: AssertionStatus[]
+}
+
+export interface FamilyFactDerivationPath {
+  side: FamilySide
+  relationshipIds: string[]
+  relationshipStatuses: AssertionStatus[]
+}
+
+export interface FamilyFactMember {
+  role: ExtendedFamilyRole
+  person: PersonView
+  derivationPaths: FamilyFactDerivationPath[]
+  religionAtDeath: GetPersonReligionAtDeathResult
+  encounterWithRoot: {
+    conclusion: PersonEncounterOutcome | "unknown"
+    assertions: PersonEncounterAssertionView[]
+  }
+}
+
+export interface AuditFamilyFactsResult extends Record<string, unknown> {
+  rootPerson: PersonView
+  sides: FamilySide[]
+  relationshipStatuses: AssertionStatus[]
+  summary: {
+    totalMembers: number
+    byRole: Record<ExtendedFamilyRole, number>
+    religionKnown: number
+    religionUnknown: number
+    encounterKnown: number
+    encounterUnknown: number
+  }
+  members: FamilyFactMember[]
 }
 
 export interface PreparedPerson {
