@@ -61,6 +61,12 @@ integrationTest(
               nameType: "nasab",
               gender: "male",
             },
+            {
+              nameOriginal: "الأم بنت الجد",
+              nameLatin: "Al-Umm bint al-Jadd",
+              nameType: "nasab",
+              gender: "female",
+            },
           ],
         },
       })
@@ -73,8 +79,14 @@ integrationTest(
       const rootPersonId = initialContent.people[0]?.entityId
       const existingChildId = initialContent.people[1]?.entityId
       const unlinkedPersonId = initialContent.people[2]?.entityId
+      const motherPersonId = initialContent.people[3]?.entityId
 
-      if (!rootPersonId || !existingChildId || !unlinkedPersonId) {
+      if (
+        !rootPersonId ||
+        !existingChildId ||
+        !unlinkedPersonId ||
+        !motherPersonId
+      ) {
         throw new Error("Family fixture did not return all person IDs.")
       }
 
@@ -263,6 +275,121 @@ integrationTest(
       expect(auditContent.missing).toHaveLength(1)
       expect(auditContent.ambiguous).toHaveLength(0)
       expect(auditContent.databaseOnly).toHaveLength(1)
+
+      const motherRelationship = await client.callTool({
+        name: "import_family_branch",
+        arguments: {
+          operationKey: `spouse-coverage-mother-${testId}`,
+          rootPersonId: motherPersonId,
+          members: [
+            {
+              existingPersonId: existingChildId,
+              relationship: {
+                type: "biological_parent_of",
+                direction: "outgoing",
+                status: "accepted",
+                reason: "Explicit test genealogy.",
+                evidence: evidence(
+                  "Al-Umm is explicitly the mother of Al-Mawjud.",
+                ),
+              },
+            },
+          ],
+        },
+      })
+
+      expect(motherRelationship.isError).not.toBe(true)
+
+      const missingSpouseAudit = await client.callTool({
+        name: "audit_spouse_coverage",
+        arguments: {
+          coverageStatuses: ["missing"],
+        },
+      })
+
+      expect(missingSpouseAudit.isError).not.toBe(true)
+      expect(missingSpouseAudit.structuredContent).toMatchObject({
+        matchingPairs: 1,
+        returnedPairs: 1,
+        hasMore: false,
+        summary: {
+          biologicalParentRelationships: 3,
+          childrenWithBothParentGenders: 1,
+          coParentPairs: 1,
+          accepted: 0,
+          missing: 1,
+        },
+        pairs: [
+          {
+            coverage: "missing",
+            maleParent: { entityId: rootPersonId },
+            femaleParent: { entityId: motherPersonId },
+            spouseRelationship: null,
+            sharedChildren: [
+              {
+                child: { entityId: existingChildId },
+                maleParentRelationship: {
+                  type: "biological_parent_of",
+                  status: "accepted",
+                  evidence: [expect.objectContaining({})],
+                },
+                femaleParentRelationship: {
+                  type: "biological_parent_of",
+                  status: "accepted",
+                  evidence: [expect.objectContaining({})],
+                },
+              },
+            ],
+          },
+        ],
+      })
+
+      const spouseRelationship = await client.callTool({
+        name: "add_person_relationship",
+        arguments: {
+          operationKey: `spouse-coverage-husband-${testId}`,
+          fromPersonId: rootPersonId,
+          toPersonId: motherPersonId,
+          type: "husband_of",
+          status: "accepted",
+          reason: "Explicit test marriage.",
+          evidence: evidence("Al-Asl is explicitly the husband of Al-Umm."),
+        },
+      })
+
+      expect(spouseRelationship.isError).not.toBe(true)
+
+      const coveredSpouseAudit = await client.callTool({
+        name: "audit_spouse_coverage",
+        arguments: {
+          coverageStatuses: ["accepted"],
+          limit: 1,
+        },
+      })
+
+      expect(coveredSpouseAudit.isError).not.toBe(true)
+      expect(coveredSpouseAudit.structuredContent).toMatchObject({
+        matchingPairs: 1,
+        returnedPairs: 1,
+        hasMore: false,
+        summary: {
+          coParentPairs: 1,
+          accepted: 1,
+          missing: 0,
+        },
+        pairs: [
+          {
+            coverage: "accepted",
+            spouseRelationship: {
+              type: "husband_of",
+              status: "accepted",
+              fromPerson: { entityId: rootPersonId },
+              toPerson: { entityId: motherPersonId },
+              evidence: [expect.objectContaining({})],
+            },
+          },
+        ],
+      })
     } finally {
       await client.close()
     }

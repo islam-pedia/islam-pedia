@@ -13,6 +13,7 @@ import type {
   GetPersonRelationshipsResult,
   PersonRelationshipEvidenceView,
   PersonRelationshipStatusChangeView,
+  PersonRelationshipView,
   RelatedPersonView,
 } from "../shared/types"
 
@@ -49,6 +50,21 @@ export async function getPersonRelationships(
     return { entityId, relationships: [] }
   }
 
+  return {
+    entityId,
+    relationships: await hydratePersonRelationshipRows(relationships, entityId),
+  }
+}
+
+export async function hydratePersonRelationshipRows(
+  relationships: Array<typeof personRelationships.$inferSelect>,
+  perspectivePersonId?: string,
+): Promise<PersonRelationshipView[]> {
+  if (relationships.length === 0) {
+    return []
+  }
+
+  const database = getDatabase()
   const relationshipIds = relationships.map(({ id }) => id)
   const personIds = [
     ...new Set(
@@ -173,41 +189,41 @@ export async function getPersonRelationships(
     statusByRelationship.set(relationshipId, history)
   }
 
-  return {
-    entityId,
-    relationships: relationships.map((relationship) => {
-      const fromPerson = requireRelatedPerson(
-        peopleById.get(relationship.fromPersonId),
-        relationship.fromPersonId,
-      )
-      const toPerson = requireRelatedPerson(
-        peopleById.get(relationship.toPersonId),
-        relationship.toPersonId,
-      )
-      const direction =
-        relationship.fromPersonId === entityId ? "outgoing" : "incoming"
-      const relatedPerson = direction === "outgoing" ? toPerson : fromPerson
+  return relationships.map((relationship) => {
+    const fromPerson = requireRelatedPerson(
+      peopleById.get(relationship.fromPersonId),
+      relationship.fromPersonId,
+    )
+    const toPerson = requireRelatedPerson(
+      peopleById.get(relationship.toPersonId),
+      relationship.toPersonId,
+    )
+    const direction =
+      perspectivePersonId === undefined ||
+      relationship.fromPersonId === perspectivePersonId
+        ? "outgoing"
+        : "incoming"
+    const relatedPerson = direction === "outgoing" ? toPerson : fromPerson
 
-      return {
-        relationshipId: relationship.id,
-        type: relationship.type,
-        status: relationship.status,
+    return {
+      relationshipId: relationship.id,
+      type: relationship.type,
+      status: relationship.status,
+      direction,
+      label: getPersonRelationshipLabel(
+        relationship.type,
         direction,
-        label: getPersonRelationshipLabel(
-          relationship.type,
-          direction,
-          relatedPerson.gender,
-        ),
-        fromPerson,
-        toPerson,
-        relatedPerson,
-        evidence: evidenceByRelationship.get(relationship.id) ?? [],
-        statusHistory: statusByRelationship.get(relationship.id) ?? [],
-        createdAt: relationship.createdAt.toISOString(),
-        updatedAt: relationship.updatedAt.toISOString(),
-      }
-    }),
-  }
+        relatedPerson.gender,
+      ),
+      fromPerson,
+      toPerson,
+      relatedPerson,
+      evidence: evidenceByRelationship.get(relationship.id) ?? [],
+      statusHistory: statusByRelationship.get(relationship.id) ?? [],
+      createdAt: relationship.createdAt.toISOString(),
+      updatedAt: relationship.updatedAt.toISOString(),
+    }
+  })
 }
 
 function requireRelatedPerson(

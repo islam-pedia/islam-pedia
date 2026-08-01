@@ -426,6 +426,51 @@ export interface AuditFamilyBranchResult extends Record<string, unknown> {
   databaseOnly: PersonRelationshipView[]
 }
 
+export type SpouseCoverageStatus = AssertionStatus | "missing"
+
+export interface AuditSpouseCoverageInput {
+  parentStatuses?: AssertionStatus[]
+  coverageStatuses?: SpouseCoverageStatus[]
+  offset?: number
+  limit?: number
+}
+
+export interface SpouseCoverageSharedChild {
+  child: RelatedPersonView
+  maleParentRelationship: PersonRelationshipView
+  femaleParentRelationship: PersonRelationshipView
+}
+
+export interface SpouseCoveragePair {
+  coverage: SpouseCoverageStatus
+  maleParent: RelatedPersonView
+  femaleParent: RelatedPersonView
+  spouseRelationship: PersonRelationshipView | null
+  sharedChildren: SpouseCoverageSharedChild[]
+}
+
+export interface AuditSpouseCoverageResult extends Record<string, unknown> {
+  parentStatuses: AssertionStatus[]
+  coverageStatuses: SpouseCoverageStatus[]
+  offset: number
+  limit: number
+  matchingPairs: number
+  returnedPairs: number
+  hasMore: boolean
+  summary: {
+    biologicalParentRelationships: number
+    childrenWithBothParentGenders: number
+    coParentPairs: number
+    unclassifiedParentRelationships: number
+    accepted: number
+    uncertain: number
+    disputed: number
+    retracted: number
+    missing: number
+  }
+  pairs: SpouseCoveragePair[]
+}
+
 export interface ImportFamilyBranchRelationshipInput {
   type: PersonRelationshipType
   direction: PersonRelationshipDirection

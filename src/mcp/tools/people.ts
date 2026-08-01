@@ -6,6 +6,7 @@ import {
   addPersonNames,
   addPersonRelationship,
   auditFamilyBranch,
+  auditSpouseCoverage,
   getFamilyTree,
   getPerson,
   getPersonEvidence,
@@ -41,6 +42,13 @@ const assertionStatusSchema = z.enum([
   "uncertain",
   "disputed",
   "retracted",
+])
+const spouseCoverageStatusSchema = z.enum([
+  "accepted",
+  "uncertain",
+  "disputed",
+  "retracted",
+  "missing",
 ])
 
 const personNameInputSchema = z.object({
@@ -247,6 +255,20 @@ const personRelationshipOutputSchema = z.object({
   ),
   createdAt: z.string(),
   updatedAt: z.string(),
+})
+
+const spouseCoveragePairOutputSchema = z.object({
+  coverage: spouseCoverageStatusSchema,
+  maleParent: relatedPersonOutputSchema,
+  femaleParent: relatedPersonOutputSchema,
+  spouseRelationship: personRelationshipOutputSchema.nullable(),
+  sharedChildren: z.array(
+    z.object({
+      child: relatedPersonOutputSchema,
+      maleParentRelationship: personRelationshipOutputSchema,
+      femaleParentRelationship: personRelationshipOutputSchema,
+    }),
+  ),
 })
 
 const addPersonRelationshipOutputSchema = z.object({
@@ -495,6 +517,73 @@ export function registerPeopleTools(server: McpServer): void {
             isError: true,
           }
         }
+
+        return {
+          content: [{ type: "text", text: JSON.stringify(output) }],
+          structuredContent: output,
+        }
+      } catch (error) {
+        return toolError(error)
+      }
+    },
+  )
+
+  server.registerTool(
+    "audit_spouse_coverage",
+    {
+      title: "Audit spouse coverage",
+      description:
+        "Find male and female biological co-parent pairs and compare them with stored canonical husband_of assertions. Returns shared children, the full parent assertions with evidence and status history, and any existing spouse assertion. Missing spouse assertions are review candidates only: co-parenthood is never treated as proof of marriage and this tool never writes data.",
+      inputSchema: z.object({
+        parentStatuses: z
+          .array(assertionStatusSchema)
+          .min(1)
+          .max(4)
+          .default(["accepted"]),
+        coverageStatuses: z
+          .array(spouseCoverageStatusSchema)
+          .min(1)
+          .max(5)
+          .default([
+            "accepted",
+            "uncertain",
+            "disputed",
+            "retracted",
+            "missing",
+          ]),
+        offset: z.number().int().min(0).max(100_000).default(0),
+        limit: z.number().int().min(1).max(500).default(100),
+      }),
+      outputSchema: z.object({
+        parentStatuses: z.array(assertionStatusSchema),
+        coverageStatuses: z.array(spouseCoverageStatusSchema),
+        offset: z.number().int().nonnegative(),
+        limit: z.number().int().positive(),
+        matchingPairs: z.number().int().nonnegative(),
+        returnedPairs: z.number().int().nonnegative(),
+        hasMore: z.boolean(),
+        summary: z.object({
+          biologicalParentRelationships: z.number().int().nonnegative(),
+          childrenWithBothParentGenders: z.number().int().nonnegative(),
+          coParentPairs: z.number().int().nonnegative(),
+          unclassifiedParentRelationships: z.number().int().nonnegative(),
+          accepted: z.number().int().nonnegative(),
+          uncertain: z.number().int().nonnegative(),
+          disputed: z.number().int().nonnegative(),
+          retracted: z.number().int().nonnegative(),
+          missing: z.number().int().nonnegative(),
+        }),
+        pairs: z.array(spouseCoveragePairOutputSchema),
+      }),
+      annotations: {
+        readOnlyHint: true,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async (input) => {
+      try {
+        const output = await auditSpouseCoverage(input)
 
         return {
           content: [{ type: "text", text: JSON.stringify(output) }],

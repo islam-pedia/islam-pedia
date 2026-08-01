@@ -8,6 +8,7 @@ export { mergePeople } from "./commands/merge-people"
 export { setPersonGender } from "./commands/set-person-gender"
 export { setPersonPrimaryName } from "./commands/set-person-primary-name"
 export { auditFamilyBranch } from "./queries/audit-family-branch"
+export { auditSpouseCoverage } from "./queries/audit-spouse-coverage"
 export { getFamilyTree } from "./queries/get-family-tree"
 export { getPerson } from "./queries/get-person"
 export { getPersonEvidence } from "./queries/get-person-evidence"
@@ -31,6 +32,8 @@ export type {
   AssertionStatus,
   AuditFamilyBranchInput,
   AuditFamilyBranchResult,
+  AuditSpouseCoverageInput,
+  AuditSpouseCoverageResult,
   EvidenceInterpretation,
   EvidenceLocatorInput,
   EvidenceSourceInput,
@@ -81,4 +84,7 @@ export type {
   SourceCategory,
   SourceMethodology,
   SourceVerification,
+  SpouseCoveragePair,
+  SpouseCoverageSharedChild,
+  SpouseCoverageStatus,
 } from "./shared/types"

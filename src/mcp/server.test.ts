@@ -33,6 +33,7 @@ test("exposes the initial MCP tools", async () => {
     "add_person_names",
     "add_person_relationship",
     "audit_family_branch",
+    "audit_spouse_coverage",
     "get_family_tree",
     "get_person",
     "get_person_evidence",
@@ -59,6 +60,13 @@ test("exposes the initial MCP tools", async () => {
   })
   expect(
     tools.find(({ name }) => name === "search_people_batch")?.annotations,
+  ).toMatchObject({
+    readOnlyHint: true,
+    idempotentHint: true,
+    openWorldHint: false,
+  })
+  expect(
+    tools.find(({ name }) => name === "audit_spouse_coverage")?.annotations,
   ).toMatchObject({
     readOnlyHint: true,
     idempotentHint: true,
