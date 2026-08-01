@@ -74,6 +74,12 @@ integrationTest(
             gender: "unknown",
             keywords: [],
           },
+          {
+            nameOriginal: "مُحَمَّد بْن عَبْد ٱللَّٰه",
+            nameLatin: "Muhammad ibn Abdullah",
+            gender: "male",
+            keywords: ["Prophet Muhammad"],
+          },
         ],
       }
       const imported = await client.callTool({
@@ -90,8 +96,9 @@ integrationTest(
       const entityId = importedContent.people[0]?.entityId
       const aisyahId = importedContent.people[1]?.entityId
       const ummuRumanId = importedContent.people[2]?.entityId
+      const muhammadId = importedContent.people[3]?.entityId
 
-      if (!entityId || !aisyahId || !ummuRumanId) {
+      if (!entityId || !aisyahId || !ummuRumanId || !muhammadId) {
         throw new Error("Integration import did not return all person IDs.")
       }
 
@@ -103,6 +110,7 @@ integrationTest(
         "male",
         "female",
         "unknown",
+        "male",
       ])
 
       const replayed = await client.callTool({
@@ -266,6 +274,198 @@ integrationTest(
       })
 
       expect(invalidMarriageDirection.isError).toBe(true)
+
+      const religionAtDeathInput = {
+        operationKey: `integration-religion-at-death-${testId}`,
+        personId: entityId,
+        value: "muslim",
+        status: "accepted",
+        reason: "Explicit synthetic death-state fixture.",
+        evidence: relationshipEvidence(
+          "Religion At Death Source",
+          "Abu Bakar is explicitly described as having died as a Muslim.",
+        ),
+      } as const
+      const religionAtDeath = await client.callTool({
+        name: "assert_person_religion_at_death",
+        arguments: religionAtDeathInput,
+      })
+
+      expect(religionAtDeath.isError).not.toBe(true)
+      expect(religionAtDeath.structuredContent).toMatchObject({
+        replayed: false,
+        created: true,
+        value: "muslim",
+        status: "accepted",
+        assertionId: expect.any(String),
+        evidenceIds: [expect.any(String)],
+        statusChangeId: expect.any(String),
+      })
+
+      const replayedReligionAtDeath = await client.callTool({
+        name: "assert_person_religion_at_death",
+        arguments: religionAtDeathInput,
+      })
+
+      expect(replayedReligionAtDeath.isError).not.toBe(true)
+      expect(replayedReligionAtDeath.structuredContent).toMatchObject({
+        replayed: true,
+        created: true,
+        value: "muslim",
+      })
+
+      const disputedReligionAtDeath = await client.callTool({
+        name: "assert_person_religion_at_death",
+        arguments: {
+          operationKey: `integration-disputed-religion-at-death-${testId}`,
+          personId: entityId,
+          value: "non_muslim",
+          status: "disputed",
+          reason: "Synthetic conflicting report fixture.",
+          evidence: relationshipEvidence(
+            "Conflicting Religion At Death Source",
+            "A conflicting synthetic report claims a non-Muslim death.",
+          ),
+        },
+      })
+
+      expect(disputedReligionAtDeath.isError).not.toBe(true)
+
+      const conflictingAcceptedReligion = await client.callTool({
+        name: "assert_person_religion_at_death",
+        arguments: {
+          operationKey: `integration-conflicting-religion-at-death-${testId}`,
+          personId: entityId,
+          value: "non_muslim",
+          status: "accepted",
+          reason: "Invalid second accepted conclusion fixture.",
+          evidence: relationshipEvidence(
+            "Invalid Accepted Religion At Death Source",
+            "This synthetic report must not replace an accepted conclusion silently.",
+          ),
+        },
+      })
+
+      expect(conflictingAcceptedReligion.isError).toBe(true)
+
+      const religionAtDeathView = await client.callTool({
+        name: "get_person_religion_at_death",
+        arguments: { personId: entityId },
+      })
+
+      expect(religionAtDeathView.isError).not.toBe(true)
+      expect(religionAtDeathView.structuredContent).toMatchObject({
+        personId: entityId,
+        conclusion: "muslim",
+        assertions: [
+          {
+            value: "muslim",
+            status: "accepted",
+            evidence: [expect.objectContaining({ status: "accepted" })],
+            statusHistory: [
+              expect.objectContaining({
+                fromStatus: null,
+                toStatus: "accepted",
+              }),
+            ],
+          },
+          {
+            value: "non_muslim",
+            status: "disputed",
+          },
+        ],
+      })
+
+      const encounterInput = {
+        operationKey: `integration-encounter-${testId}`,
+        firstPersonId: entityId,
+        secondPersonId: muhammadId,
+        outcome: "met",
+        status: "accepted",
+        reason: "Explicit synthetic encounter fixture.",
+        evidence: relationshipEvidence(
+          "Prophet Encounter Source",
+          "Abu Bakar explicitly met Prophet Muhammad.",
+        ),
+      } as const
+      const encounter = await client.callTool({
+        name: "assert_person_encounter",
+        arguments: encounterInput,
+      })
+
+      expect(encounter.isError).not.toBe(true)
+      expect(encounter.structuredContent).toMatchObject({
+        replayed: false,
+        created: true,
+        outcome: "met",
+        status: "accepted",
+        assertionId: expect.any(String),
+        evidenceIds: [expect.any(String)],
+      })
+
+      const replayedEncounter = await client.callTool({
+        name: "assert_person_encounter",
+        arguments: {
+          ...encounterInput,
+          firstPersonId: muhammadId,
+          secondPersonId: entityId,
+        },
+      })
+
+      expect(replayedEncounter.isError).not.toBe(true)
+      expect(replayedEncounter.structuredContent).toMatchObject({
+        replayed: true,
+        created: true,
+        outcome: "met",
+      })
+
+      const disputedEncounter = await client.callTool({
+        name: "assert_person_encounter",
+        arguments: {
+          operationKey: `integration-disputed-encounter-${testId}`,
+          firstPersonId: muhammadId,
+          secondPersonId: entityId,
+          outcome: "did_not_meet",
+          status: "disputed",
+          reason: "Synthetic conflicting encounter fixture.",
+          evidence: relationshipEvidence(
+            "Conflicting Prophet Encounter Source",
+            "A conflicting synthetic report claims they did not meet.",
+          ),
+        },
+      })
+
+      expect(disputedEncounter.isError).not.toBe(true)
+
+      const encounterView = await client.callTool({
+        name: "get_person_encounters",
+        arguments: { personId: entityId },
+      })
+
+      expect(encounterView.isError).not.toBe(true)
+      expect(encounterView.structuredContent).toMatchObject({
+        personId: entityId,
+        encounters: [
+          {
+            otherPerson: {
+              entityId: muhammadId,
+              nameLatin: "Muhammad ibn Abdullah",
+            },
+            conclusion: "met",
+            assertions: [
+              {
+                outcome: "met",
+                status: "accepted",
+                evidence: [expect.objectContaining({ status: "accepted" })],
+              },
+              {
+                outcome: "did_not_meet",
+                status: "disputed",
+              },
+            ],
+          },
+        ],
+      })
 
       const searched = await client.callTool({
         name: "search_people",

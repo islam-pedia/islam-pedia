@@ -2,6 +2,8 @@ export { activatePerson } from "./commands/activate-person"
 export { addPersonKeywords } from "./commands/add-person-keywords"
 export { addPersonNames } from "./commands/add-person-names"
 export { addPersonRelationship } from "./commands/add-person-relationship"
+export { assertPersonEncounter } from "./commands/assert-person-encounter"
+export { assertPersonReligionAtDeath } from "./commands/assert-person-religion-at-death"
 export { importFamilyBranch } from "./commands/import-family-branch"
 export { importPeople } from "./commands/import-people"
 export { mergePeople } from "./commands/merge-people"
@@ -11,8 +13,10 @@ export { auditFamilyBranch } from "./queries/audit-family-branch"
 export { auditSpouseCoverage } from "./queries/audit-spouse-coverage"
 export { getFamilyTree } from "./queries/get-family-tree"
 export { getPerson } from "./queries/get-person"
+export { getPersonEncounters } from "./queries/get-person-encounters"
 export { getPersonEvidence } from "./queries/get-person-evidence"
 export { getPersonRelationships } from "./queries/get-person-relationships"
+export { getPersonReligionAtDeath } from "./queries/get-person-religion-at-death"
 export { searchPeople } from "./queries/search-people"
 export { searchPeopleBatch } from "./queries/search-people-batch"
 export {
@@ -30,6 +34,10 @@ export type {
   AddPersonRelationshipInput,
   AddPersonRelationshipResult,
   AssertionStatus,
+  AssertPersonEncounterInput,
+  AssertPersonEncounterResult,
+  AssertPersonReligionAtDeathInput,
+  AssertPersonReligionAtDeathResult,
   AuditFamilyBranchInput,
   AuditFamilyBranchResult,
   AuditSpouseCoverageInput,
@@ -46,8 +54,10 @@ export type {
   FamilyTreeNode,
   GetFamilyTreeInput,
   GetFamilyTreeResult,
+  GetPersonEncountersResult,
   GetPersonEvidenceResult,
   GetPersonRelationshipsResult,
+  GetPersonReligionAtDeathResult,
   HadithGrade,
   ImportedPersonView,
   ImportFamilyBranchInput,
@@ -60,6 +70,10 @@ export type {
   IngestionSourceInput,
   MergePeopleInput,
   MergePeopleResult,
+  PersonAssertionStatusChangeView,
+  PersonEncounterAssertionView,
+  PersonEncounterOutcome,
+  PersonEncounterView,
   PersonEvidenceView,
   PersonGender,
   PersonInput,
@@ -71,6 +85,8 @@ export type {
   PersonRelationshipStatusChangeView,
   PersonRelationshipType,
   PersonRelationshipView,
+  PersonReligionAtDeath,
+  PersonReligionAtDeathAssertionView,
   PersonStatus,
   PersonStatusChangeView,
   PersonView,

@@ -4,6 +4,10 @@ import type {
   SourceMethodology,
   SourceVerification,
 } from "@/domain/evidence/source-policy"
+import type {
+  PersonEncounterOutcome,
+  PersonReligionAtDeath,
+} from "@/domain/people/assertions"
 import type { PersonNameType } from "@/domain/people/names"
 import type {
   PersonGender,
@@ -17,6 +21,10 @@ export type {
   SourceMethodology,
   SourceVerification,
 } from "@/domain/evidence/source-policy"
+export type {
+  PersonEncounterOutcome,
+  PersonReligionAtDeath,
+} from "@/domain/people/assertions"
 export type { PersonNameType } from "@/domain/people/names"
 export type {
   PersonGender,
@@ -156,6 +164,27 @@ export interface AddPersonRelationshipInput {
   evidence: ActivatePersonEvidenceInput[]
 }
 
+export interface AssertPersonReligionAtDeathInput {
+  operationKey: string
+  personId: string
+  value: PersonReligionAtDeath
+  status: AssertionStatus
+  reason: string
+  instruction?: string
+  evidence: ActivatePersonEvidenceInput[]
+}
+
+export interface AssertPersonEncounterInput {
+  operationKey: string
+  firstPersonId: string
+  secondPersonId: string
+  outcome: PersonEncounterOutcome
+  status: AssertionStatus
+  reason: string
+  instruction?: string
+  evidence: ActivatePersonEvidenceInput[]
+}
+
 export interface PersonView {
   entityId: string
   status: PersonStatus
@@ -287,6 +316,31 @@ export interface AddPersonRelationshipResult extends Record<string, unknown> {
   statusChangeId: string | null
 }
 
+export interface AssertPersonReligionAtDeathResult
+  extends Record<string, unknown> {
+  runId: string
+  replayed: boolean
+  assertionId: string
+  created: boolean
+  value: PersonReligionAtDeath
+  status: AssertionStatus
+  evidenceIds: string[]
+  statusChangeId: string | null
+}
+
+export interface AssertPersonEncounterResult extends Record<string, unknown> {
+  runId: string
+  replayed: boolean
+  assertionId: string
+  created: boolean
+  firstPersonId: string
+  secondPersonId: string
+  outcome: PersonEncounterOutcome
+  status: AssertionStatus
+  evidenceIds: string[]
+  statusChangeId: string | null
+}
+
 export interface PersonEvidenceView {
   evidenceId: string
   assertion: string
@@ -375,6 +429,55 @@ export interface PersonRelationshipView {
 export interface GetPersonRelationshipsResult extends Record<string, unknown> {
   entityId: string
   relationships: PersonRelationshipView[]
+}
+
+export interface PersonAssertionStatusChangeView {
+  statusChangeId: string
+  fromStatus: AssertionStatus | null
+  toStatus: AssertionStatus
+  reason: string
+  runId: string
+  createdAt: string
+}
+
+export interface PersonReligionAtDeathAssertionView {
+  assertionId: string
+  value: PersonReligionAtDeath
+  status: AssertionStatus
+  evidence: PersonRelationshipEvidenceView[]
+  statusHistory: PersonAssertionStatusChangeView[]
+  createdAt: string
+  updatedAt: string
+}
+
+export interface GetPersonReligionAtDeathResult
+  extends Record<string, unknown> {
+  personId: string
+  conclusion: PersonReligionAtDeath | "unknown"
+  assertions: PersonReligionAtDeathAssertionView[]
+}
+
+export interface PersonEncounterAssertionView {
+  assertionId: string
+  outcome: PersonEncounterOutcome
+  status: AssertionStatus
+  firstPerson: RelatedPersonView
+  secondPerson: RelatedPersonView
+  evidence: PersonRelationshipEvidenceView[]
+  statusHistory: PersonAssertionStatusChangeView[]
+  createdAt: string
+  updatedAt: string
+}
+
+export interface PersonEncounterView {
+  otherPerson: RelatedPersonView
+  conclusion: PersonEncounterOutcome | "unknown"
+  assertions: PersonEncounterAssertionView[]
+}
+
+export interface GetPersonEncountersResult extends Record<string, unknown> {
+  personId: string
+  encounters: PersonEncounterView[]
 }
 
 export interface FamilyBranchMemberNameInput {

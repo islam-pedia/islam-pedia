@@ -18,6 +18,10 @@ import {
   sourceCategories,
   sourceMethodologies,
 } from "@/domain/evidence/source-policy"
+import {
+  personEncounterOutcomes,
+  personReligionsAtDeath,
+} from "@/domain/people/assertions"
 import { personNameTypes } from "@/domain/people/names"
 import {
   personGenders,
@@ -42,6 +46,16 @@ export const personGender = pgEnum("person_gender", personGenders)
 export const personRelationshipType = pgEnum(
   "person_relationship_type",
   personRelationshipTypes,
+)
+
+export const personReligionAtDeath = pgEnum(
+  "person_religion_at_death",
+  personReligionsAtDeath,
+)
+
+export const personEncounterOutcome = pgEnum(
+  "person_encounter_outcome",
+  personEncounterOutcomes,
 )
 
 export const evidenceInterpretation = pgEnum("evidence_interpretation", [
@@ -339,6 +353,253 @@ export const personRelationshipStatusChanges = pgTable(
     ),
     check(
       "person_relationship_status_changes_reason_not_blank",
+      sql`btrim(${table.reason}) <> ''`,
+    ),
+  ],
+)
+
+export const personReligionAtDeathAssertions = pgTable(
+  "person_religion_at_death_assertions",
+  {
+    id: uuid("id").default(uuidV7).primaryKey(),
+    personId: uuid("person_id")
+      .notNull()
+      .references(() => people.entityId, { onDelete: "restrict" }),
+    value: personReligionAtDeath("value").notNull(),
+    status: assertionStatus("status").notNull(),
+    createdByRunId: uuid("created_by_run_id")
+      .notNull()
+      .references(() => ingestionRuns.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", {
+      withTimezone: true,
+      mode: "date",
+    })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", {
+      withTimezone: true,
+      mode: "date",
+    })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("person_religion_at_death_unique_fact_uidx").on(
+      table.personId,
+      table.value,
+    ),
+    uniqueIndex("person_religion_at_death_one_accepted_uidx")
+      .on(table.personId)
+      .where(sql`${table.status} = 'accepted'`),
+    index("person_religion_at_death_person_idx").on(table.personId),
+    index("person_religion_at_death_status_idx").on(table.status),
+    index("person_religion_at_death_created_by_run_idx").on(
+      table.createdByRunId,
+    ),
+  ],
+)
+
+export const personReligionAtDeathEvidence = pgTable(
+  "person_religion_at_death_evidence",
+  {
+    id: uuid("id").default(uuidV7).primaryKey(),
+    assertionId: uuid("assertion_id")
+      .notNull()
+      .references(() => personReligionAtDeathAssertions.id, {
+        onDelete: "restrict",
+      }),
+    passageId: uuid("passage_id")
+      .notNull()
+      .references(() => sourcePassages.id, { onDelete: "restrict" }),
+    assertion: text("assertion").notNull(),
+    interpretation: evidenceInterpretation("interpretation").notNull(),
+    status: assertionStatus("status").notNull(),
+    notes: text("notes"),
+    createdByRunId: uuid("created_by_run_id")
+      .notNull()
+      .references(() => ingestionRuns.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", {
+      withTimezone: true,
+      mode: "date",
+    })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("person_religion_at_death_evidence_assertion_idx").on(
+      table.assertionId,
+    ),
+    index("person_religion_at_death_evidence_passage_idx").on(table.passageId),
+    index("person_religion_at_death_evidence_run_idx").on(table.createdByRunId),
+    check(
+      "person_religion_at_death_evidence_assertion_not_blank",
+      sql`btrim(${table.assertion}) <> ''`,
+    ),
+    check(
+      "person_religion_at_death_evidence_notes_not_blank",
+      sql`${table.notes} IS NULL OR btrim(${table.notes}) <> ''`,
+    ),
+  ],
+)
+
+export const personReligionAtDeathStatusChanges = pgTable(
+  "person_religion_at_death_status_changes",
+  {
+    id: uuid("id").default(uuidV7).primaryKey(),
+    assertionId: uuid("assertion_id")
+      .notNull()
+      .references(() => personReligionAtDeathAssertions.id, {
+        onDelete: "restrict",
+      }),
+    fromStatus: assertionStatus("from_status"),
+    toStatus: assertionStatus("to_status").notNull(),
+    reason: text("reason").notNull(),
+    createdByRunId: uuid("created_by_run_id")
+      .notNull()
+      .references(() => ingestionRuns.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", {
+      withTimezone: true,
+      mode: "date",
+    })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("person_religion_at_death_status_assertion_idx").on(
+      table.assertionId,
+    ),
+    index("person_religion_at_death_status_run_idx").on(table.createdByRunId),
+    check(
+      "person_religion_at_death_status_transition_check",
+      sql`${table.fromStatus} IS NULL OR ${table.fromStatus} <> ${table.toStatus}`,
+    ),
+    check(
+      "person_religion_at_death_status_reason_not_blank",
+      sql`btrim(${table.reason}) <> ''`,
+    ),
+  ],
+)
+
+export const personEncounterAssertions = pgTable(
+  "person_encounter_assertions",
+  {
+    id: uuid("id").default(uuidV7).primaryKey(),
+    firstPersonId: uuid("first_person_id")
+      .notNull()
+      .references(() => people.entityId, { onDelete: "restrict" }),
+    secondPersonId: uuid("second_person_id")
+      .notNull()
+      .references(() => people.entityId, { onDelete: "restrict" }),
+    outcome: personEncounterOutcome("outcome").notNull(),
+    status: assertionStatus("status").notNull(),
+    createdByRunId: uuid("created_by_run_id")
+      .notNull()
+      .references(() => ingestionRuns.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", {
+      withTimezone: true,
+      mode: "date",
+    })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", {
+      withTimezone: true,
+      mode: "date",
+    })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("person_encounters_unique_fact_uidx").on(
+      table.firstPersonId,
+      table.secondPersonId,
+      table.outcome,
+    ),
+    uniqueIndex("person_encounters_one_accepted_uidx")
+      .on(table.firstPersonId, table.secondPersonId)
+      .where(sql`${table.status} = 'accepted'`),
+    index("person_encounters_first_person_idx").on(table.firstPersonId),
+    index("person_encounters_second_person_idx").on(table.secondPersonId),
+    index("person_encounters_status_idx").on(table.status),
+    index("person_encounters_created_by_run_idx").on(table.createdByRunId),
+    check(
+      "person_encounters_canonical_pair_check",
+      sql`${table.firstPersonId} < ${table.secondPersonId}`,
+    ),
+  ],
+)
+
+export const personEncounterEvidence = pgTable(
+  "person_encounter_evidence",
+  {
+    id: uuid("id").default(uuidV7).primaryKey(),
+    assertionId: uuid("assertion_id")
+      .notNull()
+      .references(() => personEncounterAssertions.id, {
+        onDelete: "restrict",
+      }),
+    passageId: uuid("passage_id")
+      .notNull()
+      .references(() => sourcePassages.id, { onDelete: "restrict" }),
+    assertion: text("assertion").notNull(),
+    interpretation: evidenceInterpretation("interpretation").notNull(),
+    status: assertionStatus("status").notNull(),
+    notes: text("notes"),
+    createdByRunId: uuid("created_by_run_id")
+      .notNull()
+      .references(() => ingestionRuns.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", {
+      withTimezone: true,
+      mode: "date",
+    })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("person_encounter_evidence_assertion_idx").on(table.assertionId),
+    index("person_encounter_evidence_passage_idx").on(table.passageId),
+    index("person_encounter_evidence_run_idx").on(table.createdByRunId),
+    check(
+      "person_encounter_evidence_assertion_not_blank",
+      sql`btrim(${table.assertion}) <> ''`,
+    ),
+    check(
+      "person_encounter_evidence_notes_not_blank",
+      sql`${table.notes} IS NULL OR btrim(${table.notes}) <> ''`,
+    ),
+  ],
+)
+
+export const personEncounterStatusChanges = pgTable(
+  "person_encounter_status_changes",
+  {
+    id: uuid("id").default(uuidV7).primaryKey(),
+    assertionId: uuid("assertion_id")
+      .notNull()
+      .references(() => personEncounterAssertions.id, {
+        onDelete: "restrict",
+      }),
+    fromStatus: assertionStatus("from_status"),
+    toStatus: assertionStatus("to_status").notNull(),
+    reason: text("reason").notNull(),
+    createdByRunId: uuid("created_by_run_id")
+      .notNull()
+      .references(() => ingestionRuns.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", {
+      withTimezone: true,
+      mode: "date",
+    })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("person_encounter_status_assertion_idx").on(table.assertionId),
+    index("person_encounter_status_run_idx").on(table.createdByRunId),
+    check(
+      "person_encounter_status_transition_check",
+      sql`${table.fromStatus} IS NULL OR ${table.fromStatus} <> ${table.toStatus}`,
+    ),
+    check(
+      "person_encounter_status_reason_not_blank",
       sql`btrim(${table.reason}) <> ''`,
     ),
   ],
@@ -726,6 +987,18 @@ export type PersonRelationshipEvidence =
   typeof personRelationshipEvidence.$inferSelect
 export type PersonRelationshipStatusChange =
   typeof personRelationshipStatusChanges.$inferSelect
+export type PersonReligionAtDeathAssertion =
+  typeof personReligionAtDeathAssertions.$inferSelect
+export type PersonReligionAtDeathEvidence =
+  typeof personReligionAtDeathEvidence.$inferSelect
+export type PersonReligionAtDeathStatusChange =
+  typeof personReligionAtDeathStatusChanges.$inferSelect
+export type PersonEncounterAssertion =
+  typeof personEncounterAssertions.$inferSelect
+export type PersonEncounterEvidence =
+  typeof personEncounterEvidence.$inferSelect
+export type PersonEncounterStatusChange =
+  typeof personEncounterStatusChanges.$inferSelect
 export type EntitySearchTerm = typeof entitySearchTerms.$inferSelect
 export type Source = typeof sources.$inferSelect
 export type SourcePassage = typeof sourcePassages.$inferSelect

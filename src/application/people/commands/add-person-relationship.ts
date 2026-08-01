@@ -12,6 +12,7 @@ import { SOURCE_POLICY_VERSION } from "@/domain/evidence/source-policy"
 import { personRelationshipTypes } from "@/domain/people/relationships"
 import { PeopleInputError } from "../shared/errors"
 import {
+  assertEvidenceSupportsAcceptedStatus,
   getEvidenceSourceSummary,
   insertEvidenceSourcePassage,
   prepareEvidence,
@@ -70,7 +71,11 @@ export async function addPersonRelationship(
       : requireCleanText(input.instruction, "instruction", 5_000)
   const preparedEvidence = input.evidence.map(prepareEvidence)
 
-  assertEvidenceSupportsStatus(preparedEvidence, input.status)
+  assertEvidenceSupportsAcceptedStatus(
+    preparedEvidence,
+    input.status,
+    "relationship",
+  )
 
   const requestHash = hashRequest({
     operation: "add_person_relationship",
@@ -278,29 +283,6 @@ function assertRelationshipPerson(
     throw new PeopleInputError(
       `Person "${entityId}" was merged into "${person.mergedIntoEntityId}".`,
     )
-  }
-}
-
-function assertEvidenceSupportsStatus(
-  evidence: ReturnType<typeof prepareEvidence>[],
-  status: AssertionStatus,
-): void {
-  if (status !== "accepted") {
-    return
-  }
-
-  for (const [index, item] of evidence.entries()) {
-    if (item.interpretation !== "explicit") {
-      throw new PeopleInputError(
-        `evidence[${index}].interpretation must be explicit for an accepted relationship.`,
-      )
-    }
-
-    if (item.source.category === "context_only") {
-      throw new PeopleInputError(
-        `evidence[${index}].source.category context_only cannot establish an accepted relationship.`,
-      )
-    }
   }
 }
 

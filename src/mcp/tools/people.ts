@@ -5,12 +5,16 @@ import {
   addPersonKeywords,
   addPersonNames,
   addPersonRelationship,
+  assertPersonEncounter,
+  assertPersonReligionAtDeath,
   auditFamilyBranch,
   auditSpouseCoverage,
   getFamilyTree,
   getPerson,
+  getPersonEncounters,
   getPersonEvidence,
   getPersonRelationships,
+  getPersonReligionAtDeath,
   IdempotencyConflictError,
   importFamilyBranch,
   importPeople,
@@ -22,6 +26,10 @@ import {
   setPersonPrimaryName,
 } from "@/application/people"
 import { hadithGrades, sourceCategories } from "@/domain/evidence/source-policy"
+import {
+  personEncounterOutcomes,
+  personReligionsAtDeath,
+} from "@/domain/people/assertions"
 import { personNameTypes, primaryPersonNameTypes } from "@/domain/people/names"
 import {
   personGenders,
@@ -37,6 +45,8 @@ const personNameTypeSchema = z.enum(personNameTypes)
 const primaryPersonNameTypeSchema = z.enum(primaryPersonNameTypes)
 const personGenderSchema = z.enum(personGenders)
 const personRelationshipTypeSchema = z.enum(personRelationshipTypes)
+const personReligionAtDeathSchema = z.enum(personReligionsAtDeath)
+const personEncounterOutcomeSchema = z.enum(personEncounterOutcomes)
 const assertionStatusSchema = z.enum([
   "accepted",
   "uncertain",
@@ -231,6 +241,37 @@ const relationshipEvidenceOutputSchema = z.object({
     locator: evidenceLocatorSchema,
   }),
   createdAt: z.string(),
+})
+
+const assertionStatusChangeOutputSchema = z.object({
+  statusChangeId: z.uuid(),
+  fromStatus: assertionStatusSchema.nullable(),
+  toStatus: assertionStatusSchema,
+  reason: z.string(),
+  runId: z.uuid(),
+  createdAt: z.string(),
+})
+
+const religionAtDeathAssertionOutputSchema = z.object({
+  assertionId: z.uuid(),
+  value: personReligionAtDeathSchema,
+  status: assertionStatusSchema,
+  evidence: z.array(relationshipEvidenceOutputSchema),
+  statusHistory: z.array(assertionStatusChangeOutputSchema),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+})
+
+const personEncounterAssertionOutputSchema = z.object({
+  assertionId: z.uuid(),
+  outcome: personEncounterOutcomeSchema,
+  status: assertionStatusSchema,
+  firstPerson: relatedPersonOutputSchema,
+  secondPerson: relatedPersonOutputSchema,
+  evidence: z.array(relationshipEvidenceOutputSchema),
+  statusHistory: z.array(assertionStatusChangeOutputSchema),
+  createdAt: z.string(),
+  updatedAt: z.string(),
 })
 
 const personRelationshipOutputSchema = z.object({
@@ -988,6 +1029,194 @@ export function registerPeopleTools(server: McpServer): void {
                 type: "text",
                 text: `Person "${entityId}" was not found.`,
               },
+            ],
+            isError: true,
+          }
+        }
+
+        return {
+          content: [{ type: "text", text: JSON.stringify(output) }],
+          structuredContent: output,
+        }
+      } catch (error) {
+        return toolError(error)
+      }
+    },
+  )
+
+  server.registerTool(
+    "assert_person_religion_at_death",
+    {
+      title: "Assert religion at death",
+      description:
+        "Create or support an evidenced assertion that a person died as Muslim or non-Muslim. Absence of an accepted assertion means unknown; conflicting claims remain preserved by assertion status.",
+      inputSchema: z.object({
+        operationKey: z.string().trim().min(1).max(300),
+        personId: z.uuid(),
+        value: personReligionAtDeathSchema,
+        status: assertionStatusSchema.default("accepted"),
+        reason: z.string().trim().min(1).max(5_000),
+        instruction: z.string().trim().min(1).max(5_000).optional(),
+        evidence: z.array(evidenceInputSchema).min(1).max(20),
+      }),
+      outputSchema: z.object({
+        runId: z.uuid(),
+        replayed: z.boolean(),
+        assertionId: z.uuid(),
+        created: z.boolean(),
+        value: personReligionAtDeathSchema,
+        status: assertionStatusSchema,
+        evidenceIds: z.array(z.uuid()),
+        statusChangeId: z.uuid().nullable(),
+      }),
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async (input) => {
+      try {
+        const output = await assertPersonReligionAtDeath(input)
+
+        return {
+          content: [{ type: "text", text: JSON.stringify(output) }],
+          structuredContent: output,
+        }
+      } catch (error) {
+        return toolError(error)
+      }
+    },
+  )
+
+  server.registerTool(
+    "get_person_religion_at_death",
+    {
+      title: "Get religion at death",
+      description:
+        "Get the accepted religion-at-death conclusion for a person, or unknown, together with every preserved assertion, source passage, and status change.",
+      inputSchema: z.object({ personId: z.uuid() }),
+      outputSchema: z.object({
+        personId: z.uuid(),
+        conclusion: z.union([
+          personReligionAtDeathSchema,
+          z.literal("unknown"),
+        ]),
+        assertions: z.array(religionAtDeathAssertionOutputSchema),
+      }),
+      annotations: {
+        readOnlyHint: true,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async ({ personId }) => {
+      try {
+        const output = await getPersonReligionAtDeath(personId)
+
+        if (!output) {
+          return {
+            content: [
+              { type: "text", text: `Person "${personId}" was not found.` },
+            ],
+            isError: true,
+          }
+        }
+
+        return {
+          content: [{ type: "text", text: JSON.stringify(output) }],
+          structuredContent: output,
+        }
+      } catch (error) {
+        return toolError(error)
+      }
+    },
+  )
+
+  server.registerTool(
+    "assert_person_encounter",
+    {
+      title: "Assert person encounter",
+      description:
+        "Create or support an evidenced, symmetric assertion that two people met or did not meet. The pair is canonicalized so reversing the input does not create a duplicate fact.",
+      inputSchema: z.object({
+        operationKey: z.string().trim().min(1).max(300),
+        firstPersonId: z.uuid(),
+        secondPersonId: z.uuid(),
+        outcome: personEncounterOutcomeSchema,
+        status: assertionStatusSchema.default("accepted"),
+        reason: z.string().trim().min(1).max(5_000),
+        instruction: z.string().trim().min(1).max(5_000).optional(),
+        evidence: z.array(evidenceInputSchema).min(1).max(20),
+      }),
+      outputSchema: z.object({
+        runId: z.uuid(),
+        replayed: z.boolean(),
+        assertionId: z.uuid(),
+        created: z.boolean(),
+        firstPersonId: z.uuid(),
+        secondPersonId: z.uuid(),
+        outcome: personEncounterOutcomeSchema,
+        status: assertionStatusSchema,
+        evidenceIds: z.array(z.uuid()),
+        statusChangeId: z.uuid().nullable(),
+      }),
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async (input) => {
+      try {
+        const output = await assertPersonEncounter(input)
+
+        return {
+          content: [{ type: "text", text: JSON.stringify(output) }],
+          structuredContent: output,
+        }
+      } catch (error) {
+        return toolError(error)
+      }
+    },
+  )
+
+  server.registerTool(
+    "get_person_encounters",
+    {
+      title: "Get person encounters",
+      description:
+        "Get all encounter conclusions for a person, including unknown conclusions, conflicting assertions, evidence, and status history.",
+      inputSchema: z.object({ personId: z.uuid() }),
+      outputSchema: z.object({
+        personId: z.uuid(),
+        encounters: z.array(
+          z.object({
+            otherPerson: relatedPersonOutputSchema,
+            conclusion: z.union([
+              personEncounterOutcomeSchema,
+              z.literal("unknown"),
+            ]),
+            assertions: z.array(personEncounterAssertionOutputSchema),
+          }),
+        ),
+      }),
+      annotations: {
+        readOnlyHint: true,
+        idempotentHint: true,
+        openWorldHint: false,
+      },
+    },
+    async ({ personId }) => {
+      try {
+        const output = await getPersonEncounters(personId)
+
+        if (!output) {
+          return {
+            content: [
+              { type: "text", text: `Person "${personId}" was not found.` },
             ],
             isError: true,
           }

@@ -9,7 +9,11 @@ import {
 import { cleanDisplayText } from "@/domain/people/normalization"
 import { PeopleInputError } from "./errors"
 import { requireCleanText } from "./helpers"
-import type { ActivatePersonEvidenceInput, EvidenceLocatorInput } from "./types"
+import type {
+  ActivatePersonEvidenceInput,
+  AssertionStatus,
+  EvidenceLocatorInput,
+} from "./types"
 
 export interface PreparedEvidence {
   source: {
@@ -121,6 +125,30 @@ export function getEvidenceSourceSummary(evidence: PreparedEvidence[]): {
     sourceLabel:
       labels.length === 1 ? (labels[0] ?? "") : `${labels.length} sources`,
     sourceUri: uris.length === 1 ? uris[0] : undefined,
+  }
+}
+
+export function assertEvidenceSupportsAcceptedStatus(
+  evidence: PreparedEvidence[],
+  status: AssertionStatus,
+  factLabel: string,
+): void {
+  if (status !== "accepted") {
+    return
+  }
+
+  for (const [index, item] of evidence.entries()) {
+    if (item.interpretation !== "explicit") {
+      throw new PeopleInputError(
+        `evidence[${index}].interpretation must be explicit for an accepted ${factLabel}.`,
+      )
+    }
+
+    if (item.source.category === "context_only") {
+      throw new PeopleInputError(
+        `evidence[${index}].source.category context_only cannot establish an accepted ${factLabel}.`,
+      )
+    }
   }
 }
 

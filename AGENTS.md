@@ -81,6 +81,15 @@ entities and their relationships can be explored easily.
 - Every person relationship must retain its assertion status, source passage
   evidence, and status history. Accepted relationships require explicit
   non-context-only evidence; uncertain or disputed claims remain queryable.
+- Store religion at death as evidenced assertions with `muslim` or
+  `non_muslim`; absence of an accepted assertion means `unknown`. Preserve
+  conflicting conclusions with assertion statuses instead of a boolean column.
+- Store encounters as symmetric, evidenced assertions with `met` or
+  `did_not_meet`. Canonicalize each person pair so reversing the input does not
+  duplicate the fact; absence of an accepted assertion means `unknown`.
+- Do not equate meeting the Prophet with companion status. Companion status
+  additionally requires evidence of belief at the encounter and death upon
+  Islam, and should be derived only after those facts are modeled.
 - Normalized columns are derived search data. Never overwrite display names
   with their normalized forms.
 - `entity_search_terms` contains search-only keywords and spelling variants.
